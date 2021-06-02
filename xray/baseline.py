@@ -12,7 +12,7 @@ class BaselineModel(nn.Module):
         self.pool2 = nn.MaxPool2d(2, 2)  # 123
         self.conv3 = nn.Conv2d(16, 32, 3, 1)  # 121
         self.pool3 = nn.MaxPool2d(2, 2)  # 60
-        self.fc1 = nn.Linear(32 * 60 * 60, 64)
+        self.fc1 = nn.Linear(32 * 14 * 14, 64)
         self.fc2 = nn.Linear(64, 16)
         self.fc3 = nn.Linear(16, 1)
 

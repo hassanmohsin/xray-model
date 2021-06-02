@@ -1,6 +1,7 @@
 import multiprocessing as mp
 import os
 
+import pandas as pd
 import torch
 import torch.optim as optim
 import torchvision.transforms as transforms
@@ -38,7 +39,7 @@ def save_checkpoint(state, is_best, filename='./output/checkpoint.pth.tar'):
         print("=> Validation Accuracy did not improve")
 
 
-def train():
+def train(evaluate_only=True):
     dataset_dir = '/home/mhassan/xray/dataset'
     train_dir = os.path.join(dataset_dir, 'train-set')
     valid_dir = os.path.join(dataset_dir, 'validation-set')
@@ -47,7 +48,6 @@ def train():
     batch_size = 256
     epochs = 10
     learning_rate = 0.001
-    momentum = 0.9
     num_workers = mp.cpu_count()
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     transform = transforms.Compose(
@@ -60,25 +60,58 @@ def train():
 
     training_data = XrayImageDataset(os.path.join(dataset_dir, 'train-labels.csv'), train_dir, transform)
     validation_data = XrayImageDataset(os.path.join(dataset_dir, 'validation-labels.csv'), valid_dir, transform)
+    test_data = XrayImageDataset(os.path.join(dataset_dir, 'sample-submission.csv'), test_dir, True, transform)
 
-    train_loader = DataLoader(training_data,
-                              batch_size=batch_size,
-                              shuffle=True,
-                              num_workers=num_workers,
-                              pin_memory=True)
-    validation_loader = DataLoader(validation_data,
-                                   batch_size=batch_size,
-                                   shuffle=True,
-                                   num_workers=num_workers,
-                                   pin_memory=True)
+    train_loader = DataLoader(
+        training_data,
+        batch_size=batch_size,
+        shuffle=True,
+        num_workers=num_workers,
+        pin_memory=True
+    )
+    validation_loader = DataLoader(
+        validation_data,
+        batch_size=batch_size,
+        shuffle=True,
+        num_workers=num_workers,
+        pin_memory=True
+    )
+    test_loader = DataLoader(
+        test_data,
+        batch_size=batch_size,
+        shuffle=False,
+        num_workers=num_workers,
+        pin_memory=False
+    )
 
     model = BaselineModel()
+
     if torch.cuda.device_count() > 1:
         print("Let's use", torch.cuda.device_count(), "GPUs!")
         # dim = 0 [30, xxx] -> [10, ...], [10, ...], [10, ...] on 3 GPUs
         model = nn.DataParallel(model)
 
     model.to(device)
+
+    if evaluate_only:
+        print("Only evaluating on the test set...")
+        checkpoint = torch.load("./output/checkpoint.pth.tar")
+        model.load_state_dict(checkpoint['state_dict'])
+        model.eval()
+        indices = []
+        predictions = []
+        with torch.no_grad():
+            for i, (idx, x) in enumerate(test_loader, 0):
+                inputs = x.to(device)
+                outputs = model(inputs)
+                preds = torch.round(torch.sigmoid(outputs)).squeeze().to(torch.int).cpu().numpy()
+                indices += idx
+                predictions += preds.tolist()
+
+        df = pd.DataFrame({'ImageId': indices, 'Label': predictions})
+        df.to_csv('submission.csv', index=False)
+
+        return
 
     criterion = nn.BCEWithLogitsLoss()
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
@@ -133,18 +166,23 @@ def train():
         is_best = bool(acc > best_accuracy)
         best_accuracy = max(acc, best_accuracy)
         # Save checkpoint if is a new best
-        save_checkpoint({
-            'epoch': epoch,
-            'optimizer': optimizer.state_dict(),
-            'state_dict': model.state_dict(),
-            'loss': val_loss,
-            'best_accuracy': best_accuracy
-        }, is_best, filename=f"./output/checkpoint.pth.tar")
+        save_checkpoint(
+            {
+                'epoch': epoch,
+                'optimizer': optimizer.state_dict(),
+                'state_dict': model.state_dict(),
+                'loss': val_loss,
+                'best_accuracy': best_accuracy
+            },
+            is_best,
+            filename=f"./output/checkpoint.pth.tar")
 
         train_loss = epoch_loss / len(train_loader)
         train_acc = epoch_acc / len(train_loader)
-        print(f'Epoch {epoch:03}: Loss: {train_loss:.3f} | Acc:'
-              f' {train_acc:.3f} | Val Loss: {val_loss:.3f} | Val Acc: {best_accuracy:.3f}')
+        print(
+            f'Epoch {epoch:03}: Loss: {train_loss:.3f} | Acc:'
+            f' {train_acc:.3f} | Val Loss: {val_loss:.3f} | Val Acc: {best_accuracy:.3f}'
+        )
 
         # add to tensorboard
         writer.add_scalar("Loss/train", train_loss, epoch)
@@ -154,7 +192,7 @@ def train():
 
         writer.flush()
 
-    print('Finished Training')
+    print('Finished Training.')
 
 
 if __name__ == '__main__':
@@ -163,4 +201,8 @@ if __name__ == '__main__':
     if not os.path.isdir('./output'):
         os.makedirs('./output')
 
+    # train the model
     train()
+
+    # generate the submission file
+    train(evaluate_only=True)

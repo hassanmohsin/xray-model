@@ -6,9 +6,17 @@ import torch.optim as optim
 import torchvision.transforms as transforms
 from torch import nn
 from torch.utils.data import DataLoader
+from torch.utils.tensorboard import SummaryWriter
 
 from .baseline import BaselineModel
 from .dataset import XrayImageDataset
+
+writer = SummaryWriter("./test")
+
+seed = 42
+torch.manual_seed(seed)
+torch.backends.cudnn.benchmark = True
+torch.backends.cudnn.deterministic = False
 
 
 def binary_acc(y_pred, y_test):
@@ -133,8 +141,18 @@ def train():
             'best_accuracy': best_accuracy
         }, is_best, filename=f"./output/checkpoint.pth.tar")
 
-        print(f'Epoch {epoch:03}: Loss: {epoch_loss / len(train_loader):.3f} | Acc:'
-              f' {epoch_acc / len(train_loader):.3f} | Val Loss: {val_loss:.3f} | Val Acc: {best_accuracy:.3f}')
+        train_loss = epoch_loss / len(train_loader)
+        train_acc = epoch_acc / len(train_loader)
+        print(f'Epoch {epoch:03}: Loss: {train_loss:.3f} | Acc:'
+              f' {train_acc:.3f} | Val Loss: {val_loss:.3f} | Val Acc: {best_accuracy:.3f}')
+
+        # add to tensorboard
+        writer.add_scalar("Loss/train", train_loss, epoch)
+        writer.add_scalar("Acc/train", train_acc, epoch)
+        writer.add_scalar("Loss/validation", val_loss, epoch)
+        writer.add_scalar("Acc/validation", val_accuracy, epoch)
+
+        writer.flush()
 
     print('Finished Training')
 

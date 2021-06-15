@@ -4,7 +4,6 @@ import os
 import pandas as pd
 import torch
 import torch.optim as optim
-import torchvision.transforms as transforms
 from torch import nn
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
@@ -40,27 +39,20 @@ def save_checkpoint(state, is_best, filename='./output/checkpoint.pth.tar'):
 
 
 def train(evaluate_only=True):
-    dataset_dir = '/home/mhassan/xray/dataset'
+    dataset_dir = '/data2/mhassan/xray-dataset'
     train_dir = os.path.join(dataset_dir, 'train-set')
     valid_dir = os.path.join(dataset_dir, 'validation-set')
     test_dir = os.path.join(dataset_dir, 'test-set')
 
-    batch_size = 256
+    batch_size = 64
     epochs = 10
     learning_rate = 0.001
     num_workers = mp.cpu_count()
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    transform = transforms.Compose(
-        [
-            transforms.ToPILImage(),
-            transforms.Resize((256, 256)),
-            transforms.ToTensor(),
-            # transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
-        ])
 
-    training_data = XrayImageDataset(os.path.join(dataset_dir, 'train-labels.csv'), train_dir, transform)
-    validation_data = XrayImageDataset(os.path.join(dataset_dir, 'validation-labels.csv'), valid_dir, transform)
-    test_data = XrayImageDataset(os.path.join(dataset_dir, 'sample-submission.csv'), test_dir, True, transform)
+    training_data = XrayImageDataset(os.path.join(dataset_dir, 'train-labels-short.csv'), train_dir)
+    validation_data = XrayImageDataset(os.path.join(dataset_dir, 'validation-labels-short.csv'), valid_dir)
+    test_data = XrayImageDataset(os.path.join(dataset_dir, 'sample-submission.csv'), test_dir, True)
 
     train_loader = DataLoader(
         training_data,
@@ -94,7 +86,7 @@ def train(evaluate_only=True):
     model.to(device)
 
     if evaluate_only:
-        print("Only evaluating on the test set...")
+        print("Evaluating on the test set...")
         checkpoint = torch.load("./output/checkpoint.pth.tar")
         model.load_state_dict(checkpoint['state_dict'])
         model.eval()
@@ -202,7 +194,7 @@ if __name__ == '__main__':
         os.makedirs('./output')
 
     # train the model
-    train()
+    train(evaluate_only=False)
 
     # generate the submission file
     train(evaluate_only=True)

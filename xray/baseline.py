@@ -6,13 +6,13 @@ from torch.nn import functional as F
 class BaselineModel(nn.Module):
     def __init__(self):
         super().__init__()
-        self.conv1 = nn.Conv2d(3, 8, 5, 2)  # 498
-        self.pool1 = nn.MaxPool2d(2, 2)  # 249
-        self.conv2 = nn.Conv2d(8, 16, 3, 1)  # 247
-        self.pool2 = nn.MaxPool2d(2, 2)  # 123
-        self.conv3 = nn.Conv2d(16, 32, 3, 1)  # 121
-        self.pool3 = nn.MaxPool2d(2, 2)  # 60
-        self.fc1 = nn.Linear(32 * 14 * 14, 64)
+        self.conv1 = nn.Conv2d(3, 8, 5, 2)  # 248
+        self.pool1 = nn.MaxPool2d(2, 2)  # 124
+        self.conv2 = nn.Conv2d(8, 16, 3, 1)  # 122
+        self.pool2 = nn.MaxPool2d(2, 2)  # 61
+        self.conv3 = nn.Conv2d(16, 32, 3, 1)  # 60
+        self.pool3 = nn.MaxPool2d(2, 2)  # 30
+        self.fc1 = nn.Linear(32 * 30 * 30, 64)
         self.fc2 = nn.Linear(64, 16)
         self.fc3 = nn.Linear(16, 1)
 

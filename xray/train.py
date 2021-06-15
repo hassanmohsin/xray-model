@@ -1,5 +1,7 @@
+import json
 import multiprocessing as mp
 import os
+from argparse import ArgumentParser
 
 import pandas as pd
 import torch
@@ -8,8 +10,8 @@ from torch import nn
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 
-from .baseline import BaselineModel
 from .dataset import XrayImageDataset
+from .models import BaselineModel
 
 writer = SummaryWriter("./test")
 
@@ -38,15 +40,15 @@ def save_checkpoint(state, is_best, filename='./output/checkpoint.pth.tar'):
         print("=> Validation Accuracy did not improve")
 
 
-def train(evaluate_only=True):
-    dataset_dir = '/data2/mhassan/xray-dataset'
+def train(args, evaluate_only=True):
+    dataset_dir = args['dataset_dir']
     train_dir = os.path.join(dataset_dir, 'train-set')
     valid_dir = os.path.join(dataset_dir, 'validation-set')
     test_dir = os.path.join(dataset_dir, 'test-set')
 
-    batch_size = 64
-    epochs = 10
-    learning_rate = 0.001
+    batch_size = args['batch_size']
+    epochs = args['epochs']
+    learning_rate = args['learning_rate']
     num_workers = mp.cpu_count()
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -79,7 +81,7 @@ def train(evaluate_only=True):
     model = BaselineModel()
 
     if torch.cuda.device_count() > 1:
-        print("Let's use", torch.cuda.device_count(), "GPUs!")
+        print("Using ", torch.cuda.device_count(), "GPUs!")
         # dim = 0 [30, xxx] -> [10, ...], [10, ...], [10, ...] on 3 GPUs
         model = nn.DataParallel(model)
 
@@ -87,7 +89,7 @@ def train(evaluate_only=True):
 
     if evaluate_only:
         print("Evaluating on the test set...")
-        checkpoint = torch.load("./output/checkpoint.pth.tar")
+        checkpoint = torch.load(os.path.join(args['model_dir'], "checkpoint.pth.tar"))
         model.load_state_dict(checkpoint['state_dict'])
         model.eval()
         indices = []
@@ -101,7 +103,7 @@ def train(evaluate_only=True):
                 predictions += preds.tolist()
 
         df = pd.DataFrame({'ImageId': indices, 'Label': predictions})
-        df.to_csv('submission.csv', index=False)
+        df.to_csv(os.path.join(args['model_dir'], 'submission.csv'), index=False)
 
         return
 
@@ -167,7 +169,8 @@ def train(evaluate_only=True):
                 'best_accuracy': best_accuracy
             },
             is_best,
-            filename=f"./output/checkpoint.pth.tar")
+            filename=os.path.join(args['model_dir'], 'checkpoint.pth.tar')
+        )
 
         train_loss = epoch_loss / len(train_loader)
         train_acc = epoch_acc / len(train_loader)
@@ -187,14 +190,26 @@ def train(evaluate_only=True):
     print('Finished Training.')
 
 
-if __name__ == '__main__':
+def main():
+    parser = ArgumentParser(description='Train a model in xray images')
+    parser.add_argument('--input', type=str, required=True, action='store',
+                        help="JSON input")
+    args = parser.parse_args()
+    if not os.path.isfile(args.input):
+        raise FileNotFoundError("Input {args.input} not found.")
 
-    # For saving the models
-    if not os.path.isdir('./output'):
-        os.makedirs('./output')
+    with open(args.input) as f:
+        args = json.load(f)
+
+    if not os.path.isdir(args['model_dir']):
+        os.makedirs(args['model_dir'])
 
     # train the model
-    train(evaluate_only=False)
+    train(args, evaluate_only=False)
 
     # generate the submission file
-    train(evaluate_only=True)
+    train(args, evaluate_only=True)
+
+
+if __name__ == '__main__':
+    main()

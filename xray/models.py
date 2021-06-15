@@ -2,14 +2,16 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 
+__all__ = ['BaselineModel']
+
 
 class BaselineModel(nn.Module):
     def __init__(self):
         super().__init__()
-        self.conv1 = nn.Conv2d(3, 8, 5, 2)  # 248
-        self.pool1 = nn.MaxPool2d(2, 2)  # 124
-        self.conv2 = nn.Conv2d(8, 16, 3, 1)  # 122
-        self.pool2 = nn.MaxPool2d(2, 2)  # 61
+        self.conv1 = nn.Conv2d(3, 8, 5, 2)
+        self.pool1 = nn.MaxPool2d(2, 2)
+        self.conv2 = nn.Conv2d(8, 16, 3, 1)
+        self.pool2 = nn.MaxPool2d(2, 2)
         self.conv3 = nn.Conv2d(16, 32, 3, 1)  # 60
         self.pool3 = nn.MaxPool2d(2, 2)  # 30
         self.fc1 = nn.Linear(32 * 30 * 30, 64)

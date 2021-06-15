@@ -11,7 +11,7 @@ from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 
 from .dataset import XrayImageDataset
-from .models import BaselineModel
+from .models import BaselineModel, ModelOne, ModelTwo
 
 writer = SummaryWriter("./test")
 
@@ -49,7 +49,7 @@ def train(args, evaluate_only=True):
     batch_size = args['batch_size']
     epochs = args['epochs']
     learning_rate = args['learning_rate']
-    num_workers = mp.cpu_count()
+    num_workers = args['num_worker']
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     training_data = XrayImageDataset(os.path.join(dataset_dir, 'train-labels-short.csv'), train_dir)
@@ -79,7 +79,6 @@ def train(args, evaluate_only=True):
     )
 
     model = BaselineModel()
-
     if torch.cuda.device_count() > 1:
         print("Using ", torch.cuda.device_count(), "GPUs!")
         # dim = 0 [30, xxx] -> [10, ...], [10, ...], [10, ...] on 3 GPUs

@@ -1,7 +1,7 @@
 {
-  "model_name": "BaselineModel",
+  "model_name": "ModelTwo",
   "dataset_dir": "/data2/mhassan/xray-dataset",
-  "model_dir": "./baseline",
+  "model_dir": "./ModelTwo",
   "batch_size": 64,
   "epochs": 50,
   "learning_rate": 0.001,

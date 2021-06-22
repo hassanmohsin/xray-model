@@ -261,5 +261,5 @@ if __name__ == '__main__':
          in agents]
     ) / len(agents)
 
-    print(f"mean_assigned_accuracy: {mean_assigned_accuracy:.5f}")
-    print(f"random_assigned_accuracy: {random_assigned_accuracy:.5f}")
+    print(f"Mean assignment accuracy: {mean_assigned_accuracy:.5f}")
+    print(f"Mean randomly assigned accuracy: {random_assigned_accuracy:.5f}")

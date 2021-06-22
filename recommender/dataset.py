@@ -28,8 +28,10 @@ class XrayImageDataset(Dataset):
 
 class AgentDataset(Dataset):
     def __init__(self, probabilities, agent_name, img_dir, transform):
-        self.probabilities = pd.read_csv(probabilities, dtype={"image_id": str, "agent_one": float, "agent_two": float,
-                                                               "agent_three": float})
+        self.probabilities = pd.read_csv(
+            probabilities,
+            dtype={"image_id": str, "agent_one": float, "agent_two": float, "agent_three": float}
+        )
         self.agent_name = agent_name
         self.img_dir = img_dir
         self.transform = transform

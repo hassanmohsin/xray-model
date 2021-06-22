@@ -1,12 +1,15 @@
 import os
 
+import numpy as np
 import pandas as pd
 import torch
 import torch.optim as optim
 import torchvision.transforms as transforms
+from scipy.optimize import linear_sum_assignment
 from torch import nn
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
+from tqdm import tqdm
 
 from recommender.dataset import AgentDataset
 from recommender.models import BaselineModel
@@ -42,20 +45,20 @@ def save_checkpoint(state, is_best, filename='./output/checkpoint.pth.tar'):
 
 
 def train(agent_name, evaluate_only=False):
-    batch_size = 64
-    epochs = 20
+    batch_size = 128
+    epochs = 3
     learning_rate = 0.0001
     num_workers = 56
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    dataset_dir = "../dummy-dataset/test-set"
+    dataset_dir = "/data2/mhassan/xray/dataset/train-set"
     transform = transforms.Compose([
         transforms.Resize((256, 256)),
         transforms.ToTensor(),
         transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
     ])
     dataset = AgentDataset(
-        "./probabilities.csv",
+        "./agent-performance.csv",
         agent_name,
         img_dir=dataset_dir,
         transform=transform
@@ -83,11 +86,11 @@ def train(agent_name, evaluate_only=False):
         indices = []
         predictions = []
         with torch.no_grad():
-            for i, (idx, image, label) in enumerate(data_loader, 0):
+            for idx, image, label in tqdm(data_loader, desc=f"Evaluating {agent_name}"):
                 inputs = image.to(device)
-                preds = model(inputs).squeeze().cpu().numpy()
+                preds = torch.sigmoid(model(inputs)).squeeze().cpu().numpy()
                 predictions += preds.tolist()
-                indices += idx.tolist()
+                indices += idx
 
         pd.DataFrame(
             {
@@ -95,41 +98,51 @@ def train(agent_name, evaluate_only=False):
                 'Label': predictions
             }
         ).to_csv(
-            'recommender_preds.csv',
+            f'recommender_preds-{agent_name}.csv',
             index=False
         )
 
         return
 
-    criterion = nn.MSELoss()
+    criterion = nn.BCEWithLogitsLoss()
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
+    model.train()
 
-    best_loss = 100
+    best_acc = 0.0
     for epoch in range(1, epochs + 1):  # loop over the dataset multiple times
         model.train()
         epoch_loss = 0.0
+        epoch_acc = 0.0
         running_loss = 0.0
+        running_acc = 0.0
         for i, (idx, x, y) in enumerate(data_loader, 0):
             # get the inputs; data is a list of [inputs, labels]
             inputs, labels = x.to(device), y.to(device).unsqueeze(1)
+            labels = labels.to(torch.float)  # For BCEwithLogits loss
+
             # zero the parameter gradients
             optimizer.zero_grad()
 
             # forward + backward + optimize
             outputs = model(inputs)
             loss = criterion(outputs, labels)
+            acc = binary_acc(outputs, labels)
 
             loss.backward()
             optimizer.step()
 
             epoch_loss += loss.item()
+            epoch_acc += acc.item()
             running_loss += loss.item()
+            running_acc += acc.item()
             if i % 10 == 0:
-                print(f'iter: {i:04}: Running loss: {running_loss / 10:.3f}')
+                print(f'iter: {i:04}: Running loss: {running_loss / 10:.3f} | Running acc: {running_acc / 10:.3f}')
                 running_loss = 0.0
+                running_acc = 0.0
 
         train_loss = epoch_loss / len(data_loader)
-        print(f'Epoch {epoch:03}: Loss: {train_loss:.3f}')
+        train_acc = epoch_acc / len(data_loader)
+        print(f'Epoch {epoch:03}: Loss: {train_loss:.3f} | Acc: {train_acc:.3f}')
         # model.eval()
         # val_accuracy = 0.0
         # val_loss = 0.0
@@ -148,15 +161,15 @@ def train(agent_name, evaluate_only=False):
         # is_best = bool(acc > best_accuracy)
         # best_accuracy = max(acc, best_accuracy)
         # Save checkpoint if is a new best
-        is_best = train_loss < best_loss
-        best_loss = min(best_loss, train_loss)
+        is_best = bool(train_acc > best_acc)
+        best_acc = max(best_acc, train_acc)
         save_checkpoint(
             {
                 'epoch': epoch,
                 'optimizer': optimizer.state_dict(),
                 'state_dict': model.state_dict(),
                 'loss': train_loss,
-                'best_loss': best_loss
+                'best_acc': best_acc
             },
             is_best,
             filename=f'./saved_recomm_models/baseline/{agent_name}-checkpoint.pth.tar'
@@ -164,6 +177,7 @@ def train(agent_name, evaluate_only=False):
 
         # add to tensorboard
         writer.add_scalar("Loss/train", train_loss, epoch)
+        writer.add_scalar("Acc/train", train_acc, epoch)
         # writer.add_scalar("Loss/validation", val_loss, epoch)
 
         writer.flush()
@@ -193,6 +207,59 @@ def train(agent_name, evaluate_only=False):
 
 
 if __name__ == '__main__':
-    train(agent_name="agent_one")
-    train(agent_name="agent_two")
-    train(agent_name="agent_three")
+    agents = ["agent_one", "agent_two", "agent_three"]
+
+    # # Train and evaluate to get the probabilities
+    # for agent in agents:
+    #     train(agent_name=agent)
+    #     train(agent_name=agent, evaluate_only=True)
+
+    probabilities = pd.concat(
+        [
+            pd.read_csv(
+                f"recommender_preds-{agent_name}.csv",
+                dtype={'ImageId': str, 'Label': float}
+            ).set_index('ImageId') for agent_name in agents
+        ],
+        axis=1
+    ).transpose()
+
+    assignment = []
+    random_assignment = []
+    for i in range(0, probabilities.shape[1], len(agents)):
+        df = probabilities.iloc[:, i:i + len(agents)]
+        img_ids = df.columns
+        _agent_indices = linear_sum_assignment(df.to_numpy(), maximize=True)[1]
+        assignment.append(img_ids[_agent_indices].tolist())
+        img_ids = img_ids.tolist()
+        np.random.shuffle(img_ids)
+        random_assignment.append(img_ids)
+
+    # TODO: Take care of the last element that has less than agent_count elements
+    assignment = pd.DataFrame.from_records(
+        np.stack(assignment[:-1], axis=0),
+        columns=agents
+    )
+    assignment.to_csv(
+        "assignment.csv",
+        index=False
+    )
+    random_assignment = pd.DataFrame.from_records(
+        np.stack(random_assignment[:-1], axis=0),
+        columns=agents
+    )
+
+    agent_performance = pd.read_csv("agent-performance.csv", dtype={"image_id": str})
+    mean_assigned_accuracy = sum(
+        [agent_performance[agent_performance.image_id.isin(assignment[agent])][agent].sum() / len(assignment) for agent
+         in agents]
+    ) / len(agents)
+
+    random_assigned_accuracy = sum(
+        [agent_performance[agent_performance.image_id.isin(random_assignment[agent])][agent].sum() / len(
+            random_assignment) for agent
+         in agents]
+    ) / len(agents)
+
+    print(f"mean_assigned_accuracy: {mean_assigned_accuracy:.5f}")
+    print(f"random_assigned_accuracy: {random_assigned_accuracy:.5f}")

@@ -2,23 +2,16 @@ import os
 
 import pandas as pd
 import torch
-import torchvision.transforms as transforms
 from PIL import Image as Im
 from torch.utils.data import Dataset
 
 
 class XrayImageDataset(Dataset):
-    def __init__(self, annotations_file, img_dir, test_data=False):
+    def __init__(self, annotations_file, img_dir, transform, test_data=False):
         self.img_labels = pd.read_csv(annotations_file, dtype={'ImageId': str, 'Label': int})
         self.img_dir = img_dir
         self.test_data = test_data
-        self.transform = transforms.Compose(
-            [
-                # transforms.ToPILImage(),
-                # transforms.Resize((256, 256)),
-                transforms.ToTensor(),
-                transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
-            ])
+        self.transform = transform
 
     def __len__(self):
         return len(self.img_labels)

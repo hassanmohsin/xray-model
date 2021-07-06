@@ -132,7 +132,8 @@ def train(args, evaluate_only=True):
     test_data = XrayImageDataset(
         annotations_file=os.path.join(dataset_dir, 'sample_submission.csv'),
         img_dir=os.path.join(dataset_dir, 'test-set'),
-        transform=transform
+        transform=transform,
+        test_data=True
     )
 
     test_loader = DataLoader(

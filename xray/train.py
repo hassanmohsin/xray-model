@@ -14,6 +14,9 @@ from torchvision import transforms, models
 from xray.dataset import XrayImageDataset
 from xray.models import ModelTwo, BaselineModel
 
+os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
+os.environ["CUDA_VISIBLE_DEVICES"] = "0, 1, 2, 3"
+
 seed = 42
 torch.manual_seed(seed)
 torch.backends.cudnn.benchmark = True
@@ -161,6 +164,31 @@ def train(args, evaluate_only=True):
             ('fc3', nn.Linear(128, 1))
             # ('out', nn.Sigmoid())
         ]))
+
+        model.fc = layers_resnet
+    elif args["model_name"] == "resnet152":
+        model = models.resnet152(pretrained=args["pretrained"])
+
+        if args["pretrained"]:
+            for param in model.parameters():
+                param.requires_grad = False
+
+        layers_resnet = nn.Sequential(
+            OrderedDict(
+                [
+                    ('dropout1', nn.Dropout(0.5)),
+                    ('fc1', nn.Linear(2048, 1024)),
+                    ('activation1', nn.ReLU()),
+                    ('dropout2', nn.Dropout(0.3)),
+                    ('fc2', nn.Linear(1024, 256)),
+                    ('activation2', nn.ReLU()),
+                    ('dropout3', nn.Dropout(0.3)),
+                    ('fc3', nn.Linear(256, 128)),
+                    ('activation3', nn.ReLU()),
+                    ('fc4', nn.Linear(128, 1))
+                ]
+            )
+        )
 
         model.fc = layers_resnet
     elif args["model_name"] == "vgg19_bn":

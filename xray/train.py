@@ -331,6 +331,7 @@ def main():
     parser = ArgumentParser(description='Train a model in xray images')
     parser.add_argument('--input', type=str, required=True, action='store',
                         help="JSON input")
+    parser.add_argument('--evaluate', action='store_true', help="Evaluate only")
     args = parser.parse_args()
     if not os.path.isfile(args.input):
         raise FileNotFoundError(f"Input {args.input} not found.")
@@ -341,11 +342,10 @@ def main():
     if not os.path.isdir(args['model_dir']):
         os.makedirs(args['model_dir'])
 
-    # train the model
-    train(args, evaluate_only=False)
-
-    # generate the submission file
-    train(args, evaluate_only=True)
+    if args.evaluate:
+        train(args, evaluate_only=True)
+    else:
+        train(args, evaluate_only=False)
 
 
 if __name__ == '__main__':

@@ -226,7 +226,7 @@ def train(args, evaluate_only=True):
 
     if evaluate_only:
         print("Evaluating on the test set...")
-        checkpoint = torch.load(os.path.join(args['model_dir'], "checkpoint.pth.tar"))
+        checkpoint = torch.load(os.path.join(args['model_dir'], "checkpoint-best.pth.tar"))
         model.load_state_dict(checkpoint['state_dict'])
         model.eval()
         indices = []

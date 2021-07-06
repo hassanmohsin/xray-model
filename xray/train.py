@@ -210,6 +210,8 @@ def train(args, evaluate_only=True):
         ]))
 
         model.classifier = layers
+    else:
+        raise NotImplementedError("Model not found")
 
     assert (model is not None)
     print(model)

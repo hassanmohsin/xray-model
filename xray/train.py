@@ -332,17 +332,17 @@ def main():
     parser.add_argument('--input', type=str, required=True, action='store',
                         help="JSON input")
     parser.add_argument('--evaluate', action='store_true', help="Evaluate only")
-    args = parser.parse_args()
-    if not os.path.isfile(args.input):
-        raise FileNotFoundError(f"Input {args.input} not found.")
+    args_cmd = parser.parse_args()
+    if not os.path.isfile(args_cmd.input):
+        raise FileNotFoundError(f"Input {args_cmd.input} not found.")
 
-    with open(args.input) as f:
+    with open(args_cmd.input) as f:
         args = json.load(f)
 
     if not os.path.isdir(args['model_dir']):
         os.makedirs(args['model_dir'])
 
-    if args.evaluate:
+    if args_cmd.evaluate:
         train(args, evaluate_only=True)
     else:
         train(args, evaluate_only=False)

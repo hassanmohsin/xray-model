@@ -166,8 +166,9 @@ def train(args, evaluate_only=True):
         ]))
 
         model.fc = layers_resnet
-    elif args["model_name"] == "resnet152":
-        model = models.resnet152(pretrained=args["pretrained"])
+    elif args["model_name"] in ["resnet152", "wide_resnet101_2"]:
+        model = models.resnet152(pretrained=args["pretrained"]) if args["model_name"] == "resnet152" else \
+            models.wide_resnet101_2(pretrained=args["pretrained"])
 
         if args["pretrained"]:
             for param in model.parameters():

@@ -14,8 +14,8 @@ from torchvision import transforms, models
 from xray.dataset import XrayImageDataset
 from xray.models import ModelTwo, BaselineModel
 
-os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-os.environ["CUDA_VISIBLE_DEVICES"] = "0, 1, 2, 3"
+# os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
+# os.environ["CUDA_VISIBLE_DEVICES"] = "0, 1, 2, 3"
 
 seed = 42
 torch.manual_seed(seed)
@@ -148,14 +148,18 @@ def train(args, evaluate_only=True):
         model = BaselineModel()
     if args["model_name"] == "ModelTwo":
         model = ModelTwo()
-    elif args["model_name"] == "resnet34":
-        model = models.resnet34(pretrained=args["pretrained"])
+    elif args["model_name"] in ["resnet34", "resnet18"]:
+        model = models.resnet34(
+            pretrained=args["pretrained"]
+        ) if args["model_name"] == "resnet34" else models.resnet18(
+            pretrained=args["pretrained"]
+        )
 
         if args["pretrained"]:
             for param in model.parameters():
                 param.requires_grad = False
 
-        layers_resnet = nn.Sequential(OrderedDict([
+        model.fc = nn.Sequential(OrderedDict([
             ('dropout1', nn.Dropout(0.5)),
             ('fc1', nn.Linear(512, 256)),
             ('activation1', nn.ReLU()),
@@ -163,19 +167,20 @@ def train(args, evaluate_only=True):
             ('fc2', nn.Linear(256, 128)),
             ('activation2', nn.ReLU()),
             ('fc3', nn.Linear(128, 1))
-            # ('out', nn.Sigmoid())
         ]))
 
-        model.fc = layers_resnet
-    elif args["model_name"] in ["resnet152", "wide_resnet101_2"]:
-        model = models.resnet152(pretrained=args["pretrained"]) if args["model_name"] == "resnet152" else \
-            models.wide_resnet101_2(pretrained=args["pretrained"])
+    elif args["model_name"] in ["resnet152", "wide_resnet101_2", "resnet101"]:
+        model = models.resnet152(
+            pretrained=args["pretrained"]
+        ) if args["model_name"] == "resnet152" else models.wide_resnet101_2(
+            pretrained=args["pretrained"]
+        )
 
         if args["pretrained"]:
             for param in model.parameters():
                 param.requires_grad = False
 
-        layers_resnet = nn.Sequential(
+        model.fc = nn.Sequential(
             OrderedDict(
                 [
                     ('dropout1', nn.Dropout(0.5)),
@@ -192,7 +197,26 @@ def train(args, evaluate_only=True):
             )
         )
 
-        model.fc = layers_resnet
+    elif args["model_name"] == "resnet50":
+        model = models.resnet18(pretrained=args["pretrained"])
+
+        if args["pretrained"]:
+            for param in model.parameters():
+                param.requires_grad = False
+
+        model.fc = nn.Sequential(
+            OrderedDict(
+                [
+                    ('fc2', nn.Linear(1024, 256)),
+                    ('activation2', nn.ReLU()),
+                    ('dropout3', nn.Dropout(0.3)),
+                    ('fc3', nn.Linear(256, 128)),
+                    ('activation3', nn.ReLU()),
+                    ('fc4', nn.Linear(128, 1))
+                ]
+            )
+        )
+
     elif args["model_name"] == "vgg19_bn":
         model = models.vgg19_bn(pretrained=args["pretrained"])
 
@@ -200,7 +224,7 @@ def train(args, evaluate_only=True):
             for param in model.parameters():
                 param.requires_grad = False
 
-        layers = nn.Sequential(OrderedDict([
+        model.classifier = nn.Sequential(OrderedDict([
             ('fc1', nn.Linear(25088, 4096)),
             ('activation1', nn.ReLU()),
             ('dropout1', nn.Dropout(0.5)),
@@ -211,7 +235,6 @@ def train(args, evaluate_only=True):
             # ('out', nn.Sigmoid())
         ]))
 
-        model.classifier = layers
     else:
         raise NotImplementedError("Model not found")
 

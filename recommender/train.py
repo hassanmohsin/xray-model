@@ -46,27 +46,41 @@ def save_checkpoint(state, is_best, filename='./output/checkpoint.pth.tar'):
 
 def train(agent_name, evaluate_only=False):
     batch_size = 128
-    epochs = 3
+    epochs = 5
     learning_rate = 0.0001
     num_workers = 56
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    dataset_dir = "/data2/mhassan/xray/dataset/train-set"
     transform = transforms.Compose([
         transforms.Resize((256, 256)),
         transforms.ToTensor(),
         transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
     ])
     dataset = AgentDataset(
-        "./agent-performance.csv",
+        "/data2/mhassan/xray-model/recommender/agent-performance-validation.csv",
         agent_name,
-        img_dir=dataset_dir,
+        img_dir="/data2/mhassan/xray-dataset/v3/validation-set",
         transform=transform
     )
     data_loader = DataLoader(
         dataset,
         batch_size=batch_size,
         shuffle=True,
+        num_workers=num_workers,
+        pin_memory=True
+    )
+
+    validation_set = AgentDataset(
+        "/data2/mhassan/xray-model/recommender/agent-performance-test.csv",
+        agent_name,
+        img_dir="/data2/mhassan/xray-dataset/v3/test-set",
+        transform=transform
+    )
+
+    validation_loader = DataLoader(
+        validation_set,
+        batch_size=batch_size,
+        shuffle=False,
         num_workers=num_workers,
         pin_memory=True
     )
@@ -80,13 +94,13 @@ def train(agent_name, evaluate_only=False):
 
     if evaluate_only:
         print("Evaluating on the test set...")
-        checkpoint = torch.load(f"./saved_recomm_models/baseline/{agent_name}-checkpoint.pth.tar")
+        checkpoint = torch.load(f"./saved_recomm_models/baseline/{agent_name}-checkpoint-best.pth.tar")
         model.load_state_dict(checkpoint['state_dict'])
         model.eval()
         indices = []
         predictions = []
         with torch.no_grad():
-            for idx, image, label in tqdm(data_loader, desc=f"Evaluating {agent_name}"):
+            for idx, image, label in tqdm(validation_loader, desc=f"Evaluating {agent_name}"):
                 inputs = image.to(device)
                 preds = torch.sigmoid(model(inputs)).squeeze().cpu().numpy()
                 predictions += preds.tolist()
@@ -172,7 +186,7 @@ def train(agent_name, evaluate_only=False):
                 'best_acc': best_acc
             },
             is_best,
-            filename=f'./saved_recomm_models/baseline/{agent_name}-checkpoint.pth.tar'
+            filename=f'./saved_recomm_models/baseline/{agent_name}-checkpoint-best.pth.tar'
         )
 
         # add to tensorboard
@@ -207,12 +221,13 @@ def train(agent_name, evaluate_only=False):
 
 
 if __name__ == '__main__':
-    agents = ["agent_one", "agent_two", "agent_three"]
+    agents = ["agent_one", "agent_two", "agent_three", "agent_four", "agent_five"]
 
     # # Train and evaluate to get the probabilities
-    # for agent in agents:
-    #     train(agent_name=agent)
-    #     train(agent_name=agent, evaluate_only=True)
+    for agent in agents:
+        print(f"Training and evaluating {agent}")
+        # train(agent_name=agent)
+        train(agent_name=agent, evaluate_only=True)
 
     probabilities = pd.concat(
         [
@@ -249,7 +264,7 @@ if __name__ == '__main__':
         columns=agents
     )
 
-    agent_performance = pd.read_csv("agent-performance.csv", dtype={"image_id": str})
+    agent_performance = pd.read_csv("agent-performance-test.csv", dtype={"image_id": str})
     mean_assigned_accuracy = sum(
         [agent_performance[agent_performance.image_id.isin(assignment[agent])][agent].sum() / len(assignment) for agent
          in agents]
@@ -263,3 +278,5 @@ if __name__ == '__main__':
 
     print(f"Mean assignment accuracy: {mean_assigned_accuracy:.5f}")
     print(f"Mean randomly assigned accuracy: {random_assigned_accuracy:.5f}")
+
+    # TODO: Find individual performances

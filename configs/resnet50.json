@@ -1,0 +1,10 @@
+{
+  "model_name": "resnet50",
+  "pretrained": false,
+  "dataset_dir": "/data2/mhassan/xray-dataset/v3",
+  "model_dir": "./v3/resnet50",
+  "batch_size": 64,
+  "epochs": 50,
+  "learning_rate": 0.001,
+  "num_worker": 40
+}

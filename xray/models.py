@@ -8,13 +8,13 @@ __all__ = ['BaselineModel', 'ModelOne', 'ModelTwo']
 class BaselineModel(nn.Module):
     def __init__(self):
         super().__init__()
-        self.conv1 = nn.Conv2d(3, 8, 5, 2)  # 254
-        self.pool1 = nn.MaxPool2d(2, 2)  # 127
-        self.conv2 = nn.Conv2d(8, 16, 3, 1)  # 125
-        self.pool2 = nn.MaxPool2d(2, 2)  # 62
-        self.conv3 = nn.Conv2d(16, 32, 3, 1)  # 60
-        self.pool3 = nn.MaxPool2d(2, 2)  # 30
-        self.fc1 = nn.Linear(32 * 30 * 30, 64)
+        self.conv1 = nn.Conv2d(3, 8, 5, 2)  # 247
+        self.pool1 = nn.MaxPool2d(2, 2)  # 123
+        self.conv2 = nn.Conv2d(8, 16, 3, 1)  # 120
+        self.pool2 = nn.MaxPool2d(2, 2)  # 60
+        self.conv3 = nn.Conv2d(16, 32, 3, 1)  # 57
+        self.pool3 = nn.MaxPool2d(2, 2)  # 28
+        self.fc1 = nn.Linear(32 * 29 * 29, 64)
         self.fc2 = nn.Linear(64, 16)
         self.fc3 = nn.Linear(16, 1)
 
@@ -32,12 +32,12 @@ class BaselineModel(nn.Module):
 class ModelOne(nn.Module):
     def __init__(self):
         super().__init__()
-        self.conv1 = nn.Conv2d(3, 8, 5, 2)  # 128
-        self.pool1 = nn.MaxPool2d(2, 2)  # 64
-        self.conv2 = nn.Conv2d(8, 16, 3, 1)  # 31
-        self.pool2 = nn.MaxPool2d(2, 2)  # 15
-        self.conv3 = nn.Conv2d(16, 32, 3, 1)  # 13
-        self.pool3 = nn.MaxPool2d(2, 2)  # 6
+        self.conv1 = nn.Conv2d(3, 8, 5, 2)  # 125
+        self.pool1 = nn.MaxPool2d(2, 2)  # 62
+        self.conv2 = nn.Conv2d(8, 16, 3, 1)  # 59
+        self.pool2 = nn.MaxPool2d(2, 2)  # 29
+        self.conv3 = nn.Conv2d(16, 32, 3, 1)  # 26
+        self.pool3 = nn.MaxPool2d(2, 2)  # 13
         self.fc1 = nn.Linear(32 * 14 * 14, 64)
         self.fc2 = nn.Linear(64, 16)
         self.fc3 = nn.Linear(16, 1)
@@ -56,13 +56,13 @@ class ModelOne(nn.Module):
 class ModelTwo(nn.Module):
     def __init__(self):
         super().__init__()
-        self.conv1 = nn.Conv2d(3, 8, 5, 2)  # 254
-        self.pool1 = nn.MaxPool2d(2, 2)  # 127
-        self.conv2 = nn.Conv2d(8, 16, 3, 1)  # 125
-        self.pool2 = nn.MaxPool2d(2, 2)  # 62
-        self.conv3 = nn.Conv2d(16, 32, 3, 1)  # 60
-        self.pool3 = nn.MaxPool2d(2, 2)  # 30
-        self.fc1 = nn.Linear(32 * 30 * 30, 64)
+        self.conv1 = nn.Conv2d(3, 8, 5, 2)  # 247
+        self.pool1 = nn.MaxPool2d(2, 2)  # 123
+        self.conv2 = nn.Conv2d(8, 16, 3, 1)  # 120
+        self.pool2 = nn.MaxPool2d(2, 2)  # 60
+        self.conv3 = nn.Conv2d(16, 32, 3, 1)  # 57
+        self.pool3 = nn.MaxPool2d(2, 2)  # 28
+        self.fc1 = nn.Linear(32 * 29 * 29, 64)
         self.fc2 = nn.Linear(64, 16)
         self.fc3 = nn.Linear(16, 1)
         self.dropout = nn.Dropout(0.30)

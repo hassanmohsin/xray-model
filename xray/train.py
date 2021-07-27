@@ -169,12 +169,15 @@ def train(args, evaluate_only=True):
             ('fc3', nn.Linear(128, 1))
         ]))
 
-    elif args["model_name"] in ["resnet152", "wide_resnet101_2", "resnet101"]:
-        model = models.resnet152(
-            pretrained=args["pretrained"]
-        ) if args["model_name"] == "resnet152" else models.wide_resnet101_2(
-            pretrained=args["pretrained"]
-        )
+    elif args["model_name"] in ["resnet50", "resnet101", "resnet152", "wide_resnet101_2"]:
+        if args["model_name"] == "resnet50":
+            model = models.resnet50(pretrained=args['pretrained'])
+        elif args["model_name"] == "resnet101":
+            model = models.resnet101(pretrained=args['pretrained'])
+        elif args["model_name"] == "resnet152":
+            model = models.resnet152(pretrained=args['pretrained'])
+        elif args["model_name"] == "wide_resnet101_2":
+            model = models.wide_resnet101_2(pretrained=args['pretrained'])
 
         if args["pretrained"]:
             for param in model.parameters():
@@ -196,27 +199,6 @@ def train(args, evaluate_only=True):
                 ]
             )
         )
-
-    elif args["model_name"] == "resnet50":
-        model = models.resnet18(pretrained=args["pretrained"])
-
-        if args["pretrained"]:
-            for param in model.parameters():
-                param.requires_grad = False
-
-        model.fc = nn.Sequential(
-            OrderedDict(
-                [
-                    ('fc2', nn.Linear(1024, 256)),
-                    ('activation2', nn.ReLU()),
-                    ('dropout3', nn.Dropout(0.3)),
-                    ('fc3', nn.Linear(256, 128)),
-                    ('activation3', nn.ReLU()),
-                    ('fc4', nn.Linear(128, 1))
-                ]
-            )
-        )
-
     elif args["model_name"] == "vgg19_bn":
         model = models.vgg19_bn(pretrained=args["pretrained"])
 

@@ -27,22 +27,21 @@ class XrayImageDataset(Dataset):
 
 
 class AgentDataset(Dataset):
-    def __init__(self, probabilities, agent_name, img_dir, transform):
-        self.probabilities = pd.read_csv(
-            probabilities,
+    def __init__(self, performance_file, img_dir, transform):
+        self.performance = pd.read_csv(
+            performance_file,
             dtype={"image_id": str}
         )
-        self.agent_name = agent_name
         self.img_dir = img_dir
         self.transform = transform
 
     def __len__(self):
-        return len(self.probabilities)
+        return len(self.performance)
 
     def __getitem__(self, idx):
-        img_path = os.path.join(self.img_dir, self.probabilities.image_id[idx] + ".png")
+        img_path = os.path.join(self.img_dir, self.performance.image_id[idx] + ".png")
         image = Im.open(img_path).convert('RGB')
         image = self.transform(image)
-        label = self.probabilities[self.agent_name][idx]
+        label = self.performance['performance'][idx]
 
-        return self.probabilities.image_id[idx], image, torch.tensor(label)
+        return self.performance.image_id[idx], image, torch.tensor(label)

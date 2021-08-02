@@ -238,17 +238,17 @@ def agent_eight(device, transform, dataset_type):
     return get_preds('agent_eight', model, checkpoint, transform, device, dataset_type)
 
 
-def merge_dfs(dir="performance", dataset_type="validation"):
-    validation_df = pd.read_csv(f"{dir}/{agents[0]}-performance-{dataset_type}-set.csv", dtype={"image_id": str})
-    for agent in agents[1:]:
-        validation_df = pd.merge(
-            validation_df,
-            pd.read_csv(f"{dir}/{agent}-performance-{dataset_type}-set.csv", dtype={"image_id": str}),
-            on="image_id",
-            how="inner"
-        )
-
-    validation_df.to_csv(f"{dir}/agent-performance-{dataset_type}-set.csv", index=False)
+# def merge_dfs(dir="performance", dataset_type="validation"):
+#     validation_df = pd.read_csv(f"{dir}/{agents[0]}-performance-{dataset_type}-set.csv", dtype={"image_id": str})
+#     for agent in agents[1:]:
+#         validation_df = pd.merge(
+#             validation_df,
+#             pd.read_csv(f"{dir}/{agent}-performance-{dataset_type}-set.csv", dtype={"image_id": str}),
+#             on="image_id",
+#             how="inner"
+#         )
+#
+#     validation_df.to_csv(f"{dir}/agent-performance-{dataset_type}-set.csv", index=False)
 
 
 if __name__ == '__main__':
@@ -288,8 +288,8 @@ if __name__ == '__main__':
             agent_seven(device, transform, dataset_type),
             agent_eight(device, transform, dataset_type)
         ]
-        print("Merging dataframes...")
-        merge_dfs('./performances', dataset_type)
+        # print("Merging dataframes...")
+        # merge_dfs('./performances', dataset_type)
 
     # agent_one_img_ids, agent_one_probs = agent_one(device, transform)
     # agent_two_img_ids, agent_two_probs = agent_two(device, transform)

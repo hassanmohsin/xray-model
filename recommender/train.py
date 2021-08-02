@@ -46,11 +46,11 @@ def save_checkpoint(state, is_best, filename='./output/checkpoint.pth.tar'):
         print("=> Validation Accuracy did not improve")
 
 
-def train(agent_name, evaluate_only=False):
+def train_agent(agent_name, evaluate_only=False):
     batch_size = 256
-    epochs = 10
+    epochs = 5
     learning_rate = 0.0001
-    num_workers = 56
+    num_workers = 40
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     transform = transforms.Compose([
@@ -60,8 +60,7 @@ def train(agent_name, evaluate_only=False):
         transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
     ])
     dataset = AgentDataset(
-        "/data2/mhassan/xray-model/recommender/agent-performance-validation.csv",
-        agent_name,
+        f"/data2/mhassan/xray-model/performances/{agent_name}-performance-validation-set.csv",
         img_dir="/data2/mhassan/xray-dataset/v3/validation-set",
         transform=transform
     )
@@ -74,8 +73,7 @@ def train(agent_name, evaluate_only=False):
     )
 
     validation_set = AgentDataset(
-        "/data2/mhassan/xray-model/recommender/agent-performance-test.csv",
-        agent_name,
+        f"/data2/mhassan/xray-model/performances/{agent_name}-performance-test-set.csv",
         img_dir="/data2/mhassan/xray-dataset/v3/test-set",
         transform=transform
     )
@@ -222,31 +220,48 @@ def train(agent_name, evaluate_only=False):
 #     # generate the submission file
 #     train(args, evaluate_only=True)
 
-def evaluate(assignment, assignment_type="optimized"):
+def evaluate(agents, assignment, assignment_type="optimized"):
     # Evaluate the result
+    ind_eval = {}
     evaluation = {}
     total_acc, total_fbeta = 0., 0.
     for agent in agents:
         # Read the test performance file
         performance_df = pd.read_csv(f"./performances/{agent}-performance-test-set.csv", dtype={"image_id": str})
+        # individual performance
+        acc = performance_df.performance.sum() / len(performance_df)
+        fbeta = metrics.fbeta_score(
+            performance_df.label.to_list(),
+            performance_df.prediction.to_list(),
+            beta=2.0
+        )
+        ind_eval[agent] = {
+            "accuracy": f"{acc:.3f}",
+            "fbeta": f"{fbeta:.3f}"
+        }
+        # assigned performance
         _df = performance_df[performance_df.image_id.isin(assignment[agent])]
         acc = _df.performance.sum() / len(_df)
         total_acc += acc
-        fbeta = metrics.fbeta_score(_df.label.to_list(), _df.performance.to_list(), beta=2.0)
+        fbeta = metrics.fbeta_score(_df.label.to_list(), _df.prediction.to_list(), beta=2.0)
         total_fbeta += fbeta
         evaluation[agent] = {
-            "accuracy": acc,
-            "fbeta": fbeta
+            "accuracy": f"{acc:.3f}",
+            "fbeta": f"{fbeta:.3f}"
         }
 
-    evaluation['avg_acc'] = total_acc / len(agents)
-    evaluation['avg_fbeta'] = total_fbeta / len(agents)
-    print(evaluation)
+    evaluation['avg_acc'] = f"{total_acc / len(agents):.3f}"
+    evaluation['avg_fbeta'] = f"{total_fbeta / len(agents):.3f}"
+    final_eval = {
+        'individual': ind_eval,
+        'assigned': evaluation
+    }
+    print(final_eval)
     with open(f"./recommender_evaluation-{assignment_type}.json", 'w') as f:
-        json.dump(evaluation, f)
+        json.dump(final_eval, f)
 
 
-if __name__ == '__main__':
+def main(train=True):
     agents = [
         "agent_one",
         "agent_two",
@@ -258,11 +273,12 @@ if __name__ == '__main__':
         "agent_eight"
     ]
 
-    # # Train and evaluate to get the probabilities
-    for agent in agents:
-        print(f"Training and evaluating {agent}")
-        train(agent_name=agent)
-        train(agent_name=agent, evaluate_only=True)
+    if train:
+        # # Train and evaluate to get the probabilities
+        for agent in agents:
+            print(f"Training and evaluating {agent}")
+            train_agent(agent_name=agent)
+            train_agent(agent_name=agent, evaluate_only=True)
 
     probabilities = pd.concat(
         [
@@ -300,22 +316,11 @@ if __name__ == '__main__':
         columns=agents
     )
 
-    evaluate(assignment, assignment_type="optimized")
-    evaluate(random_assignment, assignment_type="random")
-    #
-    # agent_performance = pd.read_csv("agent-performance-test.csv", dtype={"image_id": str})
-    # mean_assigned_accuracy = sum(
-    #     [agent_performance[agent_performance.image_id.isin(assignment[agent])][agent].sum() / len(assignment) for agent
-    #      in agents]
-    # ) / len(agents)
-    #
-    # random_assigned_accuracy = sum(
-    #     [agent_performance[agent_performance.image_id.isin(random_assignment[agent])][agent].sum() / len(
-    #         random_assignment) for agent
-    #      in agents]
-    # ) / len(agents)
-    #
-    # print(f"Mean assignment accuracy: {mean_assigned_accuracy:.5f}")
-    # print(f"Mean randomly assigned accuracy: {random_assigned_accuracy:.5f}")
-    #
-    # # TODO: Find individual performances
+    print("Evaluating optimized assignment")
+    evaluate(agents, assignment, assignment_type="optimized")
+    print("Evaluating random assignment")
+    evaluate(agents, random_assignment, assignment_type="random")
+
+
+if __name__ == '__main__':
+    main(train=False)

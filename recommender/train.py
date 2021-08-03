@@ -1,5 +1,7 @@
 import json
 import os
+from argparse import ArgumentParser
+from collections import OrderedDict
 
 import numpy as np
 import pandas as pd
@@ -11,15 +13,15 @@ from sklearn import metrics
 from torch import nn
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
+from torchvision import models
 from tqdm import tqdm
 
 from recommender.dataset import AgentDataset
 from recommender.models import BaselineModel
-
-writer = SummaryWriter("./test")
+from xray.models import BaselineModel
 
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+os.environ["CUDA_VISIBLE_DEVICES"] = "0, 1, 2, 3"
 
 seed = 42
 torch.manual_seed(seed)
@@ -38,30 +40,79 @@ def binary_acc(y_pred, y_test):
 
 
 def save_checkpoint(state, is_best, filename='./output/checkpoint.pth.tar'):
+    weight_dir = os.path.dirname(filename)
     """Save checkpoint if a new best is achieved"""
     if is_best:
         print("=> Saving a new best")
-        torch.save(state, filename)  # save checkpoint
+        torch.save(state, os.path.join(weight_dir, "checkpoint-best.pth.tar"))  # save checkpoint
     else:
         print("=> Validation Accuracy did not improve")
+    torch.save(state, filename)
 
 
-def train_agent(agent_name, evaluate_only=False):
-    batch_size = 256
-    epochs = 5
-    learning_rate = 0.0001
-    num_workers = 40
+def get_mean_std(loader):
+    channels_sum, channels_squared_sum, num_batches = 0, 0, 0
+
+    for data, _ in loader:
+        channels_sum += torch.mean(data, dim=(0, 2, 3))
+        channels_squared_sum += torch.mean(data ** 2, dim=(0, 2, 3))
+        num_batches += 1
+
+    mean = channels_sum / num_batches
+    std = (channels_squared_sum / num_batches - mean ** 2) ** 0.5
+
+    return mean, std
+
+
+def train_agent(args, agent_name, evaluate_only=False):
+    model_dir = os.path.join(args["perf_predictor_dir"], agent_name)
+    writer = SummaryWriter(os.path.join(model_dir, 'logs'))
+    dataset_dir = args['dataset_dir']
+    batch_size = args['batch_size']
+    epochs = args['epochs']
+    learning_rate = args['learning_rate']
+    num_workers = args['num_worker']
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    transform = transforms.Compose([
-        transforms.Resize((256, 256)),
-        transforms.ToTensor(),
-        # TODO: Use the same normalization values as the original ones
-        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
-    ])
+    # Find the mean and std of training data.
+    # Uncomment the following block to compute mean and std and comment the hardcoded values after.
+    # train_data = XrayImageDataset(
+    #     annotations_file=os.path.join(dataset_dir, 'train-labels.csv'),
+    #     img_dir=os.path.join(dataset_dir, 'train-set'),
+    #     transform=transforms.Compose(
+    #         [
+    #             transforms.Resize((256, 256)),
+    #             transforms.ToTensor()
+    #         ]
+    #     )
+    # )
+    #
+    # train_loader = DataLoader(
+    #     train_data,
+    #     batch_size=512,
+    #     shuffle=False,
+    #     num_workers=num_workers,
+    #     pin_memory=True
+    # )
+    #
+    # mean, std = get_mean_std(train_loader)
+    mean = torch.Tensor([0.7165, 0.7446, 0.7119])
+    std = torch.Tensor([0.3062, 0.2433, 0.2729])
+
+    transform = transforms.Compose(
+        [
+            # transforms.Resize((256, 256)),
+            transforms.ToTensor(),
+            transforms.Normalize(
+                mean=mean,
+                std=std
+            )
+        ]
+    )
+
     dataset = AgentDataset(
         f"/data2/mhassan/xray-model/performances/{agent_name}-performance-validation-set.csv",
-        img_dir="/data2/mhassan/xray-dataset/v3/validation-set",
+        img_dir=os.path.join(args['dataset_dir'], "validation-set"),
         transform=transform
     )
     data_loader = DataLoader(
@@ -74,7 +125,7 @@ def train_agent(agent_name, evaluate_only=False):
 
     validation_set = AgentDataset(
         f"/data2/mhassan/xray-model/performances/{agent_name}-performance-test-set.csv",
-        img_dir="/data2/mhassan/xray-dataset/v3/test-set",
+        img_dir=os.path.join(args['dataset_dir'], "test-set"),
         transform=transform
     )
 
@@ -86,7 +137,84 @@ def train_agent(agent_name, evaluate_only=False):
         pin_memory=True
     )
 
-    model = BaselineModel()
+    model = None
+    if args["model_name"] == "baseline":
+        model = BaselineModel()
+    elif args["model_name"] in ["resnet34", "resnet18"]:
+        model = models.resnet34(
+            pretrained=args["pretrained"]
+        ) if args["model_name"] == "resnet34" else models.resnet18(
+            pretrained=args["pretrained"]
+        )
+
+        if args["pretrained"]:
+            for param in model.parameters():
+                param.requires_grad = False
+
+        model.fc = nn.Sequential(OrderedDict([
+            ('dropout1', nn.Dropout(0.5)),
+            ('fc1', nn.Linear(512, 256)),
+            ('activation1', nn.ReLU()),
+            ('dropout2', nn.Dropout(0.3)),
+            ('fc2', nn.Linear(256, 128)),
+            ('activation2', nn.ReLU()),
+            ('fc3', nn.Linear(128, 1))
+        ]))
+
+    elif args["model_name"] in ["resnet50", "resnet101", "resnet152", "wide_resnet101_2"]:
+        if args["model_name"] == "resnet50":
+            model = models.resnet50(pretrained=args['pretrained'])
+        elif args["model_name"] == "resnet101":
+            model = models.resnet101(pretrained=args['pretrained'])
+        elif args["model_name"] == "resnet152":
+            model = models.resnet152(pretrained=args['pretrained'])
+        elif args["model_name"] == "wide_resnet101_2":
+            model = models.wide_resnet101_2(pretrained=args['pretrained'])
+
+        if args["pretrained"]:
+            for param in model.parameters():
+                param.requires_grad = False
+
+        model.fc = nn.Sequential(
+            OrderedDict(
+                [
+                    ('dropout1', nn.Dropout(0.5)),
+                    ('fc1', nn.Linear(2048, 1024)),
+                    ('activation1', nn.ReLU()),
+                    ('dropout2', nn.Dropout(0.3)),
+                    ('fc2', nn.Linear(1024, 256)),
+                    ('activation2', nn.ReLU()),
+                    ('dropout3', nn.Dropout(0.3)),
+                    ('fc3', nn.Linear(256, 128)),
+                    ('activation3', nn.ReLU()),
+                    ('fc4', nn.Linear(128, 1))
+                ]
+            )
+        )
+    elif args["model_name"] == "vgg19_bn":
+        model = models.vgg19_bn(pretrained=args["pretrained"])
+
+        if args["pretrained"]:
+            for param in model.parameters():
+                param.requires_grad = False
+
+        model.classifier = nn.Sequential(OrderedDict([
+            ('fc1', nn.Linear(25088, 4096)),
+            ('activation1', nn.ReLU()),
+            ('dropout1', nn.Dropout(0.5)),
+            ('fc2', nn.Linear(4096, 128)),
+            ('activation2', nn.ReLU()),
+            ('dropout2', nn.Dropout(0.3)),
+            ('fc3', nn.Linear(128, 1))
+            # ('out', nn.Sigmoid())
+        ]))
+
+    else:
+        raise NotImplementedError("Model not found")
+
+    assert (model is not None)
+    print(model)
+
     if torch.cuda.device_count() > 1:
         print("Using ", torch.cuda.device_count(), "GPUs!")
         model = nn.DataParallel(model)
@@ -95,7 +223,9 @@ def train_agent(agent_name, evaluate_only=False):
 
     if evaluate_only:
         print("Evaluating on the test set...")
-        checkpoint = torch.load(f"./recomm_models/baseline/{agent_name}-checkpoint-best.pth.tar")
+        checkpoint = torch.load(
+            os.path.join(model_dir, f"checkpoint-best.pth.tar")
+        )
         model.load_state_dict(checkpoint['state_dict'])
         model.eval()
         indices = []
@@ -113,7 +243,7 @@ def train_agent(agent_name, evaluate_only=False):
                 'Label': predictions
             }
         ).to_csv(
-            f'{agent_name}-prediction-probability.csv',
+            os.path.join(model_dir, f'{agent_name}-prediction-probability.csv'),
             index=False
         )
 
@@ -187,7 +317,7 @@ def train_agent(agent_name, evaluate_only=False):
                 'best_acc': best_acc
             },
             is_best,
-            filename=f'./recomm_models/baseline/{agent_name}-checkpoint-best.pth.tar'
+            filename=os.path.join(model_dir, f'checkpoint-{epoch:03d}-val-{train_acc:.3f}.pth.tar')
         )
 
         # add to tensorboard
@@ -199,26 +329,6 @@ def train_agent(agent_name, evaluate_only=False):
 
     print('Finished Training.')
 
-
-# def main():
-#     parser = ArgumentParser(description='Train a model in xray images')
-#     parser.add_argument('--input', type=str, required=True, action='store',
-#                         help="JSON input")
-#     args = parser.parse_args()
-#     if not os.path.isfile(args.input):
-#         raise FileNotFoundError("Input {args.input} not found.")
-#
-#     with open(args.input) as f:
-#         args = json.load(f)
-#
-#     if not os.path.isdir(args['model_dir']):
-#         os.makedirs(args['model_dir'])
-#
-#     # train the model
-#     train(args, evaluate_only=False)
-#
-#     # generate the submission file
-#     train(args, evaluate_only=True)
 
 def evaluate(agents, assignment, assignment_type="optimized"):
     # Evaluate the result
@@ -261,7 +371,7 @@ def evaluate(agents, assignment, assignment_type="optimized"):
         json.dump(final_eval, f)
 
 
-def main(train=True):
+def main(args, train=True):
     agents = [
         "agent_one",
         "agent_two",
@@ -277,8 +387,8 @@ def main(train=True):
         # # Train and evaluate to get the probabilities
         for agent in agents:
             print(f"Training and evaluating {agent}")
-            train_agent(agent_name=agent)
-            train_agent(agent_name=agent, evaluate_only=True)
+            train_agent(args, agent_name=agent)
+            train_agent(args, agent_name=agent, evaluate_only=True)
 
     probabilities = pd.concat(
         [
@@ -323,4 +433,21 @@ def main(train=True):
 
 
 if __name__ == '__main__':
-    main(train=False)
+    parser = ArgumentParser(description='Train a recommender model')
+    parser.add_argument('--input', type=str, required=True, action='store',
+                        help="JSON input")
+    parser.add_argument('--evaluate', action='store_true', help="Evaluate only")
+    args_cmd = parser.parse_args()
+    if not os.path.isfile(args_cmd.input):
+        raise FileNotFoundError(f"Input {args_cmd.input} not found.")
+
+    with open(args_cmd.input) as f:
+        args = json.load(f)
+
+    if not os.path.isdir(args['model_dir']):
+        os.makedirs(args['model_dir'])
+
+    if args_cmd.evaluate:
+        main(args, train=False)
+    else:
+        main(args, train=True)

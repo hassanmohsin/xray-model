@@ -1,7 +1,8 @@
 {
-  "model_name": "BaselineModel",
-  "dataset_dir": "/data2/mhassan/xray-dataset/v2",
+  "model_name": "baseline",
+  "dataset_dir": "/data2/mhassan/xray-dataset/classification/v3",
   "model_dir": "./baseline",
+  "perf_predictor_dir": "./perf-predictor/baseline",
   "batch_size": 64,
   "epochs": 50,
   "learning_rate": 0.001,

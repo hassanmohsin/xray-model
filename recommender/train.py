@@ -6,6 +6,7 @@ from collections import OrderedDict
 import numpy as np
 import pandas as pd
 import torch
+import torch.nn.functional as F
 import torch.optim as optim
 import torchvision.transforms as transforms
 from scipy.optimize import linear_sum_assignment
@@ -20,13 +21,26 @@ from recommender.dataset import AgentDataset
 from recommender.models import BaselineModel
 from xray.models import BaselineModel
 
-os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-os.environ["CUDA_VISIBLE_DEVICES"] = "0, 1, 2, 3"
+# os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
+# os.environ["CUDA_VISIBLE_DEVICES"] = "0, 1, 2, 3"
 
 seed = 42
 torch.manual_seed(seed)
 torch.backends.cudnn.benchmark = True
 torch.backends.cudnn.deterministic = False
+
+
+class FocalLoss(nn.Module):
+    def __init__(self, alpha=0.25, gamma=3):
+        super(FocalLoss, self).__init__()
+        self.alpha = alpha
+        self.gamma = gamma
+
+    def forward(self, inputs, targets):
+        bce_loss = F.binary_cross_entropy_with_logits(inputs, targets, reduction='none')
+        pt = torch.exp(-bce_loss)  # prevents nans when probability 0
+        focal_loss = self.alpha * (1 - pt) ** self.gamma * bce_loss
+        return focal_loss.mean()
 
 
 def binary_acc(y_pred, y_test):
@@ -249,7 +263,8 @@ def train_agent(args, agent_name, evaluate_only=False):
 
         return
 
-    criterion = nn.BCEWithLogitsLoss()
+    # criterion = nn.BCEWithLogitsLoss()
+    criterion = FocalLoss()
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
     model.train()
 
@@ -384,7 +399,7 @@ def main(args, train=True):
     ]
 
     if train:
-        # # Train and evaluate to get the probabilities
+        # Train and evaluate to get the probabilities
         for agent in agents:
             print(f"Training and evaluating {agent}")
             train_agent(args, agent_name=agent)
@@ -393,7 +408,7 @@ def main(args, train=True):
     probabilities = pd.concat(
         [
             pd.read_csv(
-                f"{agent_name}-prediction-probability.csv",
+                os.path.join(args['perf_predictor_dir'], agent_name, f"{agent_name}-prediction-probability.csv"),
                 dtype={'ImageId': str, 'Label': float}
             ).set_index('ImageId') for agent_name in agents
         ],
@@ -443,9 +458,6 @@ if __name__ == '__main__':
 
     with open(args_cmd.input) as f:
         args = json.load(f)
-
-    if not os.path.isdir(args['model_dir']):
-        os.makedirs(args['model_dir'])
 
     if args_cmd.evaluate:
         main(args, train=False)

@@ -67,7 +67,7 @@ def save_checkpoint(state, is_best, filename='./output/checkpoint.pth.tar'):
 def get_mean_std(loader):
     channels_sum, channels_squared_sum, num_batches = 0, 0, 0
 
-    for data, _ in loader:
+    for _, data, _ in loader:
         channels_sum += torch.mean(data, dim=(0, 2, 3))
         channels_squared_sum += torch.mean(data ** 2, dim=(0, 2, 3))
         num_batches += 1
@@ -88,29 +88,24 @@ def train_agent(args, agent_name, evaluate_only=False):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     # Find the mean and std of training data.
-    # Uncomment the following block to compute mean and std and comment the hardcoded values after.
-    # train_data = XrayImageDataset(
-    #     annotations_file=os.path.join(dataset_dir, 'train-labels.csv'),
-    #     img_dir=os.path.join(dataset_dir, 'train-set'),
-    #     transform=transforms.Compose(
-    #         [
-    #             transforms.Resize((256, 256)),
-    #             transforms.ToTensor()
-    #         ]
-    #     )
-    # )
-    #
-    # train_loader = DataLoader(
-    #     train_data,
-    #     batch_size=512,
-    #     shuffle=False,
-    #     num_workers=num_workers,
-    #     pin_memory=True
-    # )
-    #
-    # mean, std = get_mean_std(train_loader)
-    mean = torch.Tensor([0.7165, 0.7446, 0.7119])
-    std = torch.Tensor([0.3062, 0.2433, 0.2729])
+    dataset = AgentDataset(
+        os.path.join(args['output_dir'], f"performances/{agent_name}-performance-validation-set.csv"),
+        img_dir=os.path.join(args['dataset_dir'], "validation-set"),
+        transform=transforms.Compose([
+            transforms.ToTensor()
+        ]),
+        sample_count=2e3
+    )
+    data_loader = DataLoader(
+        dataset,
+        batch_size=batch_size,
+        shuffle=True,
+        num_workers=num_workers,
+        pin_memory=True
+    )
+
+    mean, std = get_mean_std(data_loader)
+    print(f"Training set: mean: {mean.numpy()}, std: {std.numpy()}")
 
     transform = transforms.Compose(
         [

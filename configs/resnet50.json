@@ -1,11 +1,10 @@
 {
   "model_name": "resnet50",
+  "dataset_dir": "/data2/mhassan/xray-dataset/classification/v3-large",
+  "output_dir": "v3-large",
   "pretrained": false,
-  "dataset_dir": "/data2/mhassan/xray-dataset/classification/v3",
-  "model_dir": "./v3/resnet50",
-  "perf_predictor_dir": "./v3/perf-predictor/resnet50",
   "batch_size": 64,
-  "epochs": 50,
+  "epochs": 10,
   "learning_rate": 0.001,
-  "num_worker": 40
+  "num_worker": 48
 }

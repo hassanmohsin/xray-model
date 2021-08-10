@@ -23,10 +23,6 @@ torch.backends.cudnn.deterministic = False
 
 
 def get_preds(agent_name, model, checkpoint, transform, device, dataset_type):
-    # Create the output directory
-    output_dir = "performances"
-    if not os.path.isdir(output_dir):
-        os.makedirs(output_dir)
     output_file = os.path.join(output_dir, f"{agent_name}-performance-{dataset_type}-set.csv")
 
     # skip if already done
@@ -251,6 +247,11 @@ if __name__ == '__main__':
 
     dataset_dir = args['dataset_dir']
     agents_dir = os.path.dirname(args['agent_dir'])
+
+    # Create the output directory
+    output_dir = "./v3-large/performances"
+    if not os.path.isdir(output_dir):
+        os.makedirs(output_dir)
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using {device}")

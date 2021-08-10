@@ -22,7 +22,7 @@ from recommender.models import BaselineModel
 from xray.models import BaselineModel
 
 # os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-# os.environ["CUDA_VISIBLE_DEVICES"] = "0, 1, 2, 3"
+# os.environ["CUDA_VISIBLE_DEVICES"] = "0, 1"
 
 seed = 42
 torch.manual_seed(seed)
@@ -81,7 +81,6 @@ def get_mean_std(loader):
 def train_agent(args, agent_name, evaluate_only=False):
     model_dir = os.path.join(args["perf_predictor_dir"], agent_name)
     writer = SummaryWriter(os.path.join(model_dir, 'logs'))
-    dataset_dir = args['dataset_dir']
     batch_size = args['batch_size']
     epochs = args['epochs']
     learning_rate = args['learning_rate']
@@ -125,7 +124,7 @@ def train_agent(args, agent_name, evaluate_only=False):
     )
 
     dataset = AgentDataset(
-        f"/data2/mhassan/xray-model/performances/{agent_name}-performance-validation-set.csv",
+        os.path.join(args['output_dir'], f"performances/{agent_name}-performance-validation-set.csv"),
         img_dir=os.path.join(args['dataset_dir'], "validation-set"),
         transform=transform
     )
@@ -138,7 +137,7 @@ def train_agent(args, agent_name, evaluate_only=False):
     )
 
     validation_set = AgentDataset(
-        f"/data2/mhassan/xray-model/performances/{agent_name}-performance-test-set.csv",
+        os.path.join(args['output_dir'], f"performances/{agent_name}-performance-test-set.csv"),
         img_dir=os.path.join(args['dataset_dir'], "test-set"),
         transform=transform
     )
@@ -345,14 +344,17 @@ def train_agent(args, agent_name, evaluate_only=False):
     print('Finished Training.')
 
 
-def evaluate(agents, assignment, assignment_type="optimized"):
+def evaluate(args, assignment, assignment_type="optimized"):
     # Evaluate the result
     ind_eval = {}
     evaluation = {}
     total_acc, total_fbeta = 0., 0.
-    for agent in agents:
+    for agent in args['agents']:
         # Read the test performance file
-        performance_df = pd.read_csv(f"./performances/{agent}-performance-test-set.csv", dtype={"image_id": str})
+        performance_df = pd.read_csv(
+            os.path.join(args['output_dir'], f"performances/{agent}-performance-test-set.csv"),
+            dtype={"image_id": str}
+        )
         # individual performance
         acc = performance_df.performance.sum() / len(performance_df)
         fbeta = metrics.fbeta_score(
@@ -375,32 +377,21 @@ def evaluate(agents, assignment, assignment_type="optimized"):
             "fbeta": f"{fbeta:.3f}"
         }
 
-    evaluation['avg_acc'] = f"{total_acc / len(agents):.3f}"
-    evaluation['avg_fbeta'] = f"{total_fbeta / len(agents):.3f}"
+    evaluation['avg_acc'] = f"{total_acc / len(args['agents']):.3f}"
+    evaluation['avg_fbeta'] = f"{total_fbeta / len(args['agents']):.3f}"
     final_eval = {
         'individual': ind_eval,
         'assigned': evaluation
     }
     print(final_eval)
-    with open(f"./recommender_evaluation-{assignment_type}.json", 'w') as f:
+    with open(os.path.join(args['output_dir'], f"./{assignment_type}-assignment-performance.json"), 'w') as f:
         json.dump(final_eval, f)
 
 
 def main(args, train=True):
-    agents = [
-        "agent_one",
-        "agent_two",
-        "agent_three",
-        "agent_four",
-        "agent_five",
-        "agent_six",
-        "agent_seven",
-        "agent_eight"
-    ]
-
     if train:
         # Train and evaluate to get the probabilities
-        for agent in agents:
+        for agent in args['agents']:
             print(f"Training and evaluating {agent}")
             train_agent(args, agent_name=agent)
             train_agent(args, agent_name=agent, evaluate_only=True)
@@ -410,7 +401,7 @@ def main(args, train=True):
             pd.read_csv(
                 os.path.join(args['perf_predictor_dir'], agent_name, f"{agent_name}-prediction-probability.csv"),
                 dtype={'ImageId': str, 'Label': float}
-            ).set_index('ImageId') for agent_name in agents
+            ).set_index('ImageId') for agent_name in args['agents']
         ],
         axis=1
     ).transpose()
@@ -418,8 +409,8 @@ def main(args, train=True):
     # Find optimized assignment
     assignment = []
     random_assignment = []
-    for i in range(0, probabilities.shape[1], len(agents)):
-        df = probabilities.iloc[:, i:i + len(agents)]
+    for i in range(0, probabilities.shape[1], len(args['agents'])):
+        df = probabilities.iloc[:, i:i + len(args['agents'])]
         img_ids = df.columns
         _agent_indices = linear_sum_assignment(df.to_numpy(), maximize=True)[1]
         assignment.append(img_ids[_agent_indices].tolist())
@@ -430,21 +421,21 @@ def main(args, train=True):
     # TODO: Take care of the last element that has less than agent_count elements
     assignment = pd.DataFrame.from_records(
         np.stack(assignment[:-1], axis=0),
-        columns=agents
+        columns=args['agents']
     )
     assignment.to_csv(
-        "assignment.csv",
+        os.path.join(args['output_dir'], "assignment.csv"),
         index=False
     )
     random_assignment = pd.DataFrame.from_records(
         np.stack(random_assignment[:-1], axis=0),
-        columns=agents
+        columns=args['agents']
     )
 
     print("Evaluating optimized assignment")
-    evaluate(agents, assignment, assignment_type="optimized")
+    evaluate(args, assignment, assignment_type="optimized")
     print("Evaluating random assignment")
-    evaluate(agents, random_assignment, assignment_type="random")
+    evaluate(args, random_assignment, assignment_type="random")
 
 
 if __name__ == '__main__':
@@ -458,6 +449,18 @@ if __name__ == '__main__':
 
     with open(args_cmd.input) as f:
         args = json.load(f)
+
+    args['agents'] = [
+        "agent_one",
+        "agent_two",
+        "agent_three",
+        "agent_four",
+        "agent_five",
+        "agent_six",
+        "agent_seven",
+        "agent_eight"
+    ]
+    args['perf_predictor_dir'] = os.path.join(args['output_dir'], 'perf-predictor')
 
     if args_cmd.evaluate:
         main(args, train=False)

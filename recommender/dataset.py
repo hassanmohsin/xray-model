@@ -7,8 +7,8 @@ from torch.utils.data import Dataset
 
 
 class XrayImageDataset(Dataset):
-    def __init__(self, annotations_file, img_dir, transform, test_data=False):
-        self.img_labels = pd.read_csv(annotations_file, dtype={'ImageId': str, 'Label': int})
+    def __init__(self, annotations_file, img_dir, transform, test_data=False, sample_count=None):
+        self.img_labels = pd.read_csv(annotations_file, dtype={'ImageId': str, 'Label': int}, nrows=sample_count)
         self.img_dir = img_dir
         self.test_data = test_data
         self.transform = transform
@@ -27,10 +27,11 @@ class XrayImageDataset(Dataset):
 
 
 class AgentDataset(Dataset):
-    def __init__(self, performance_file, img_dir, transform):
+    def __init__(self, performance_file, img_dir, transform, sample_count=None):
         self.performance = pd.read_csv(
             performance_file,
-            dtype={"image_id": str}
+            dtype={"image_id": str},
+            nrows=sample_count
         )
         self.img_dir = img_dir
         self.transform = transform

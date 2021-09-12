@@ -9,6 +9,7 @@ from tqdm import tqdm
 
 from recommender.dataset import XrayImageDataset
 from xray.agent import AgentGroup
+from xray.config import AgentConfig
 
 torch.backends.cudnn.benchmark = True
 torch.backends.cudnn.deterministic = False
@@ -101,7 +102,7 @@ if __name__ == '__main__':
     ])
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using {device}")
-    agent_group = AgentGroup("./configs")
+    agent_group = AgentGroup(AgentConfig.config_dir)
 
     for agent in agent_group.agents:
         for set in ['validation', 'test']:

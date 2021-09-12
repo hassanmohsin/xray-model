@@ -33,24 +33,8 @@ class Agent(object):
 
 class AgentGroup(object):
     def __init__(self, param_dir):
-        self.agent_names = [
-            "agent_one",
-            "agent_two",
-            "agent_three",
-            "agent_four",
-            "agent_five",
-            "agent_six"
-        ]
-
-        self.param_files = [
-            "resnet18.json",
-            "resnet34.json",
-            "resnet50.json",
-            "resnet101.json",
-            "resnet152.json",
-            "wide_resnet101_2.json"
-        ]
-
+        self.agent_names = AgentConfig.agent_names
+        self.param_files = AgentConfig.param_files
         self.param_dir = param_dir
 
         if not os.path.isdir(self.param_dir):

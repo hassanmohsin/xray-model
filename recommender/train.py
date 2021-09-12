@@ -301,24 +301,6 @@ def train_agent(agent, args, evaluate_only=False):
         train_loss = epoch_loss / len(data_loader)
         train_acc = epoch_acc / len(data_loader)
         print(f'Epoch {epoch:03}: Loss: {train_loss:.3f} | Acc: {train_acc:.3f}')
-        # model.eval()
-        # val_accuracy = 0.0
-        # val_loss = 0.0
-        # with torch.no_grad():
-        #     for i, (x, y) in enumerate(validation_loader, 0):
-        #         inputs, labels = x.to(device), y.to(device).unsqueeze(1)
-        #         labels = labels.to(torch.float)
-        #         outputs = model(inputs)
-        #         loss = criterion(outputs, labels)
-        #         acc = binary_acc(outputs, labels)
-        #         val_accuracy += acc.item()
-        #         val_loss += loss.item()
-        #
-        # acc = val_accuracy / len(validation_loader)
-        # val_loss = val_loss / len(validation_loader)
-        # is_best = bool(acc > best_accuracy)
-        # best_accuracy = max(acc, best_accuracy)
-        # Save checkpoint if is a new best
         is_best = bool(train_acc > best_acc)
         best_acc = max(best_acc, train_acc)
         save_checkpoint(

@@ -21,7 +21,7 @@ class Agent(object):
         )
         self.params['performance_dir'] = os.path.join(
             self.params.get("output_dir", "results"),
-            AgentConfig.parformance_dir
+            AgentConfig.performance_dir
         )
 
     def set_model(self, model):

@@ -21,8 +21,8 @@ from recommender.dataset import AgentDataset
 from recommender.models import BaselineModel
 from xray.models import BaselineModel
 
-# os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-# os.environ["CUDA_VISIBLE_DEVICES"] = "0, 1"
+os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
+# os.environ["CUDA_VISIBLE_DEVICES"] = "4, 5, 6, 7"
 
 seed = 42
 torch.manual_seed(seed)
@@ -455,7 +455,7 @@ if __name__ == '__main__':
         "agent_seven",
         "agent_eight"
     ]
-    args['perf_predictor_dir'] = os.path.join(args['output_dir'], 'perf-predictor')
+    args['perf_predictor_dir'] = os.path.join(args['output_dir'], 'perf-predictor', args['model_name'])
 
     if args_cmd.evaluate:
         main(args, train=False)

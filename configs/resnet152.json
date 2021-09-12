@@ -1,10 +1,10 @@
 {
   "model_name": "resnet152",
+  "dataset_dir": "/data2/mhassan/xray/dataset-5/dataset",
+  "output_dir": "star",
   "pretrained": false,
-  "dataset_dir": "/data2/mhassan/xray-dataset/v3",
-  "model_dir": "./v3/resnet152",
-  "batch_size": 64,
-  "epochs": 50,
+  "batch_size": 256,
+  "epochs": 30,
   "learning_rate": 0.001,
-  "num_worker": 56
+  "num_worker": 32
 }

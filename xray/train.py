@@ -14,9 +14,6 @@ from torchvision import transforms, models
 from xray.dataset import XrayImageDataset
 from xray.models import ModelTwo, BaselineModel
 
-# os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-# os.environ["CUDA_VISIBLE_DEVICES"] = "0, 1, 2, 3"
-
 seed = 42
 torch.manual_seed(seed)
 torch.backends.cudnn.benchmark = True
@@ -59,38 +56,42 @@ def get_mean_std(loader):
 
 
 def train(args, evaluate_only=True):
-    writer = SummaryWriter(args["model_dir"])
-    dataset_dir = args['dataset_dir']
-    batch_size = args['batch_size']
-    epochs = args['epochs']
-    learning_rate = args['learning_rate']
-    num_workers = args['num_worker']
+    model_dir = os.path.join(args['output_dir'], 'agents', args['model_name'])
+    writer = SummaryWriter(model_dir)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     # Find the mean and std of training data.
     # Uncomment the following block to compute mean and std and comment the hardcoded values after.
-    # train_data = XrayImageDataset(
-    #     annotations_file=os.path.join(dataset_dir, 'train-labels.csv'),
-    #     img_dir=os.path.join(dataset_dir, 'train-set'),
-    #     transform=transforms.Compose(
-    #         [
-    #             transforms.Resize((256, 256)),
-    #             transforms.ToTensor()
-    #         ]
-    #     )
-    # )
-    #
-    # train_loader = DataLoader(
-    #     train_data,
-    #     batch_size=512,
-    #     shuffle=False,
-    #     num_workers=num_workers,
-    #     pin_memory=True
-    # )
-    #
-    # mean, std = get_mean_std(train_loader)
-    mean = torch.Tensor([0.7165, 0.7446, 0.7119])
-    std = torch.Tensor([0.3062, 0.2433, 0.2729])
+    train_data = XrayImageDataset(
+        annotations_file=os.path.join(args['dataset_dir'], 'train-labels.csv'),
+        img_dir=os.path.join(args['dataset_dir'], 'train-set'),
+        transform=transforms.Compose(
+            [
+                transforms.Resize((256, 256)),
+                transforms.ToTensor()
+            ]
+        )
+    )
+
+    train_loader = DataLoader(
+        train_data,
+        batch_size=args['batch_size'],
+        shuffle=False,
+        num_workers=args['num_worker'],
+        pin_memory=True
+    )
+
+    mean, std = get_mean_std(train_loader)
+    with open(os.path.join(model_dir, "normalization_data.json"), 'w') as f:
+        json.dump(
+            {
+                'mean': mean,
+                'std': std
+            },
+            f
+        )
+    # mean = torch.Tensor([0.7165, 0.7446, 0.7119])
+    # std = torch.Tensor([0.3062, 0.2433, 0.2729])
     transform = transforms.Compose(
         [
             # transforms.Resize((256, 256)),
@@ -102,45 +103,45 @@ def train(args, evaluate_only=True):
         ]
     )
     train_data = XrayImageDataset(
-        annotations_file=os.path.join(dataset_dir, 'train-labels.csv'),
-        img_dir=os.path.join(dataset_dir, 'train-set'),
+        annotations_file=os.path.join(args['dataset_dir'], 'train-labels.csv'),
+        img_dir=os.path.join(args['dataset_dir'], 'train-set'),
         transform=transform
     )
 
     train_loader = DataLoader(
         train_data,
-        batch_size=batch_size,
+        batch_size=args['batch_size'],
         shuffle=True,
-        num_workers=num_workers,
+        num_workers=args['num_worker'],
         pin_memory=True
     )
 
     validation_data = XrayImageDataset(
-        annotations_file=os.path.join(dataset_dir, 'validation-labels.csv'),
-        img_dir=os.path.join(dataset_dir, 'validation-set'),
+        annotations_file=os.path.join(args['dataset_dir'], 'validation-labels.csv'),
+        img_dir=os.path.join(args['dataset_dir'], 'validation-set'),
         transform=transform
     )
 
     validation_loader = DataLoader(
         validation_data,
-        batch_size=batch_size,
+        batch_size=args['batch_size'],
         shuffle=True,
-        num_workers=num_workers,
+        num_workers=args['num_worker'],
         pin_memory=True
     )
 
     test_data = XrayImageDataset(
-        annotations_file=os.path.join(dataset_dir, 'sample_submission.csv'),
-        img_dir=os.path.join(dataset_dir, 'test-set'),
+        annotations_file=os.path.join(args['dataset_dir'], 'test-labels.csv'),
+        img_dir=os.path.join(args['dataset_dir'], 'test-set'),
         transform=transform,
         test_data=True
     )
 
     test_loader = DataLoader(
         test_data,
-        batch_size=batch_size,
+        batch_size=args['batch_size'],
         shuffle=False,
-        num_workers=num_workers,
+        num_workers=args['num_worker'],
         pin_memory=False
     )
     model = None
@@ -251,10 +252,10 @@ def train(args, evaluate_only=True):
         return
 
     criterion = nn.BCEWithLogitsLoss()
-    optimizer = optim.Adam(model.parameters(), lr=learning_rate)
+    optimizer = optim.Adam(model.parameters(), lr=args['learning_rate'])
 
     best_accuracy = 0.0
-    for epoch in range(1, epochs + 1):  # loop over the dataset multiple times
+    for epoch in range(1, args['epochs'] + 1):  # loop over the dataset multiple times
         model.train()
         epoch_loss = 0.0
         epoch_acc = 0.0
@@ -312,7 +313,7 @@ def train(args, evaluate_only=True):
                 'best_accuracy': best_accuracy
             },
             is_best,
-            filename=os.path.join(args['model_dir'], f'checkpoint-{epoch:03d}-val-{val_accuracy:.3f}.pth.tar')
+            filename=os.path.join(model_dir, f'checkpoint-{epoch:03d}-val-{val_accuracy:.3f}.pth.tar')
         )
 
         train_loss = epoch_loss / len(train_loader)
@@ -344,9 +345,6 @@ def main():
 
     with open(args_cmd.input) as f:
         args = json.load(f)
-
-    if not os.path.isdir(args['model_dir']):
-        os.makedirs(args['model_dir'])
 
     if args_cmd.evaluate:
         train(args, evaluate_only=True)

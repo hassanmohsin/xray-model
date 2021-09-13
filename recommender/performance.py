@@ -42,6 +42,7 @@ def get_preds(agent, transform, device, dataset_type):
     checkpoint = torch.load(checkpoint_file)
     model.load_state_dict(checkpoint['state_dict'])
     model.eval()
+    # TODO: enable "apply_dropout" using an argument
     model.apply(apply_dropout)
 
     if not os.path.isdir(agent.params["dataset_dir"]):

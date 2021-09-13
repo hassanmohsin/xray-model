@@ -45,6 +45,9 @@ class AgentGroup(object):
 
         self.assign_models()
 
+    def __len__(self):
+        return len(self.agents)
+
     def assign_models(self):
         for agent in self.agents:
             if agent.name == "agent_one":

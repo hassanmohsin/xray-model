@@ -19,6 +19,7 @@ from tqdm import tqdm
 
 from recommender.dataset import AgentDataset
 from recommender.models import BaselineModel
+from recommender.performance import apply_dropout
 from xray.agent import AgentGroup
 from xray.config import AgentConfig
 from xray.models import BaselineModel
@@ -27,7 +28,7 @@ from xray.models import BaselineModel
 # os.environ["CUDA_VISIBLE_DEVICES"] = "0, 1"
 
 seed = 42
-torch.manual_seed(seed)
+# torch.manual_seed(seed)
 torch.backends.cudnn.benchmark = True
 torch.backends.cudnn.deterministic = False
 
@@ -80,7 +81,8 @@ def get_mean_std(loader):
     return mean, std
 
 
-def train_agent(agent, args, evaluate_only=False):
+# TODO: Remove `args` argument from the following method, these should be available in agent.params
+def train_agent(agent, args, evaluate_only=False, multiple_predictions=False):
     model_dir = os.path.join(agent.params["performance_dir"], agent.name)
     if not os.path.isdir(model_dir):
         os.makedirs(model_dir)
@@ -93,7 +95,7 @@ def train_agent(agent, args, evaluate_only=False):
 
     # Find the mean and std of training data.
     dataset = AgentDataset(
-        os.path.join(args['output_dir'], f"agents-performance/run-1/{agent.name}-performance-validation-set.csv"),
+        os.path.join(agent.params["performance_dir"], f"{agent.name}-performance-validation-set.csv"),
         img_dir=os.path.join(agent.params['dataset_dir'], "validation-set"),
         transform=transforms.Compose([
             transforms.ToTensor()
@@ -123,7 +125,7 @@ def train_agent(agent, args, evaluate_only=False):
     )
 
     dataset = AgentDataset(
-        os.path.join(args['output_dir'], f"agents-performance/run-1/{agent.name}-performance-validation-set.csv"),
+        os.path.join(agent.params["performance_dir"], f"{agent.name}-performance-validation-set.csv"),
         img_dir=os.path.join(agent.params['dataset_dir'], "validation-set"),
         transform=transform,
     )
@@ -136,7 +138,7 @@ def train_agent(agent, args, evaluate_only=False):
     )
 
     validation_set = AgentDataset(
-        os.path.join(args['output_dir'], f"agents-performance/run-1/{agent.name}-performance-test-set.csv"),
+        os.path.join(agent.params["performance_dir"], f"{agent.name}-performance-test-set.csv"),
         img_dir=os.path.join(agent.params['dataset_dir'], "test-set"),
         transform=transform,
     )
@@ -240,24 +242,60 @@ def train_agent(agent, args, evaluate_only=False):
         )
         model.load_state_dict(checkpoint['state_dict'])
         model.eval()
-        indices = []
-        predictions = []
-        with torch.no_grad():
-            for idx, image, label in tqdm(validation_loader, desc=f"Evaluating {agent.name}"):
-                inputs = image.to(device)
-                preds = torch.sigmoid(model(inputs)).squeeze().cpu().numpy()
-                predictions += preds.tolist()
-                indices += idx
 
-        pd.DataFrame(
-            {
-                'ImageId': indices,
-                'Label': predictions
-            }
-        ).to_csv(
-            os.path.join(model_dir, f'{agent.name}-prediction-probability.csv'),
-            index=False
-        )
+        if multiple_predictions:
+            prediction_count = 3
+            print(f"Multiple predictions ({prediction_count}) with dropout activated.")
+            # apply dropout during inference
+            model.apply(apply_dropout)
+            # TODO: Don't hardcode number of predictions
+            # TODO: Remove duplicate code segment below
+            dfs = []
+            # TODO: Move this loop to where the model is spitting out the predictions.
+            #  Make sure the output is not identical
+            for i in range(1, prediction_count + 1):
+                indices = []
+                predictions = []
+                with torch.no_grad():
+                    for idx, image, label in tqdm(validation_loader, desc=f"Evaluating {agent.name}"):
+                        inputs = image.to(device)
+                        preds = torch.sigmoid(model(inputs)).squeeze().cpu().numpy()
+                        predictions += preds.tolist()
+                        indices += idx
+                dfs.append(
+                    pd.DataFrame(
+                        {
+                            "image_id": indices,
+                            f"proba_{i}": predictions
+                        },
+                    ).set_index('image_id')
+                )
+
+            all_dfs = pd.concat(dfs, axis=1)
+            all_dfs['proba_mean'] = all_dfs.mean(axis=1)
+            all_dfs['proba_var'] = all_dfs.var(axis=1)
+            all_dfs.to_csv(
+                os.path.join(model_dir, f'{agent.name}-prediction-probability-multi.csv'),
+            )
+        else:
+            indices = []
+            predictions = []
+            with torch.no_grad():
+                for idx, image, label in tqdm(validation_loader, desc=f"Evaluating {agent.name}"):
+                    inputs = image.to(device)
+                    preds = torch.sigmoid(model(inputs)).squeeze().cpu().numpy()
+                    predictions += preds.tolist()
+                    indices += idx
+
+            pd.DataFrame(
+                {
+                    'image_id': indices,
+                    'proba': predictions
+                }
+            ).to_csv(
+                os.path.join(model_dir, f'{agent.name}-prediction-probability.csv'),
+                index=False
+            )
 
         return
 
@@ -374,23 +412,47 @@ def evaluate(agent_group, assignment, assignment_type="optimized"):
 
 def main(args, train=True):
     agent_group = AgentGroup(AgentConfig.config_dir)
-    if train:
-        # Train and evaluate to get the probabilities
-        for agent in agent_group.agents:
-            print(f"Training and evaluating {agent}")
+    # Train and evaluate to get the probabilities
+    multiple_prediction = True
+    for agent in agent_group.agents:
+        print(f"Training and evaluating {agent}")
+        if train:
             train_agent(agent, args)
-            train_agent(agent, args, evaluate_only=True)
+        train_agent(agent, args, evaluate_only=True, multiple_predictions=multiple_prediction)
 
+    # Probability matrix need to be in the following format:
+    #         image_1 image_2 image_3 ... image_n
+    # agent_1
+    # agent_2
+    # agent_3
+    # ...
+    # ...
+    # agent_n
+    #
+    # TODO: Get the probabilities for all the datasets (we have agent-specific datasets)
+    #  while doing so, normalize the test sets using dataset specific mean and std
     probabilities = pd.concat(
         [
             pd.read_csv(
-                os.path.join(agent.params['performance_dir'], agent.name, f"{agent.name}-prediction-probability.csv"),
-                dtype={'ImageId': str, 'Label': float}
-            ).set_index('ImageId') for agent in agent_group.agents
+                os.path.join(
+                    agent.params['performance_dir'],
+                    agent.name,
+                    f"{agent.name}-prediction-probability{'-multi' if multiple_prediction else ''}.csv"
+                ),
+                usecols=['image_id', 'proba_mean'] if multiple_prediction else ['image_id', 'proba'],
+                dtype={'image_id': str}
+            ).set_index('image_id') for agent in agent_group.agents
         ],
         axis=1
-    ).transpose()
+    ).transpose().dropna(axis=1)  # Transpose is to get the matrix in the required format
+    # TODO: Remove the above dropna operation and investigate what's wrong
 
+    probabilities.to_csv(
+        os.path.join(
+            agent_group.agents[0].params['performance_dir'],
+            "assignment_probabilities.csv"
+        )
+    )
     # Find optimized assignment
     assignment = []
     random_assignment = []

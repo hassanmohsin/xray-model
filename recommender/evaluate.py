@@ -14,6 +14,7 @@ from xray.agent import AgentGroup
 from xray.config import AgentConfig
 from xray.dataset import XrayImageDataset
 
+
 # os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
 # os.environ["CUDA_VISIBLE_DEVICES"] = "0, 1"
 
@@ -82,7 +83,7 @@ def load_performance_dataloaders(agent_group, set, sample_count=None, shuffle=Fa
     return dict(zip([agent.name for agent in agent_group.agents], loaders))
 
 
-def evaluate(agent, dataloader, prediction_count):
+def evaluate(agent, dataloader, dataset_name, prediction_count):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = agent.model
     if torch.cuda.device_count() > 1:
@@ -103,17 +104,19 @@ def evaluate(agent, dataloader, prediction_count):
         # apply dropout during inference
         model.apply(apply_dropout)
 
-    indices, predictions = [], defaultdict(list)
+    indices, labels = predictions = [], [], defaultdict(list)
     with torch.no_grad():
         for idx, image, label in tqdm(dataloader, desc=f"Evaluating {agent.name} "):
             inputs = image.to(device)
+            labels += label.numpy().tolist()
             preds = [torch.sigmoid(model(inputs)).squeeze().cpu().numpy() for _ in range(prediction_count)]
             for i, pred in enumerate(preds):
                 predictions[f"proba_{i}"] += pred.tolist()
             indices += idx
 
     pred_df = pd.DataFrame()
-    pred_df["image_id"] = [agent.name + '-' + i for i in indices]
+    pred_df["image_id"] = [dataset_name + '-' + i for i in indices]
+    pred_df["label"] = pd.Series(labels)
     for k, v in predictions.items():
         pred_df[k] = pd.Series(v)
     pred_df["proba_mean"] = pred_df.mean(axis=1, numeric_only=True)
@@ -124,15 +127,20 @@ def evaluate(agent, dataloader, prediction_count):
 
 def main():
     agent_group = AgentGroup(AgentConfig.config_dir)
+
+    # Get the predictions from the agents for all the datasets
     for set_name in ["validation", "test"]:
         dataloaders = load_agent_dataloaders(agent_group, set=set_name, sample_count=None)
         for agent in agent_group.agents:
             for dataset_name, loader in dataloaders.items():
-                df = evaluate(agent, loader, prediction_count=3)
+                df = evaluate(agent, loader, dataset_name, prediction_count=3)
                 df.to_csv(
                     os.path.join(agent.params["agent_dir"], f"{agent.name}_on_{dataset_name}-{set_name}.csv"),
                     index=False
                 )
+            # TODO: merge the dfs for each agent and write in one single file
+
+    # Get the prediction from the predictors for all the datasets
 
 
 if __name__ == '__main__':

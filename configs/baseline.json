@@ -1,0 +1,9 @@
+{
+  "model_name": "baseline",
+  "dataset_dir": "/data/mhassan/xray/dataset-1/dataset",
+  "pretrained": false,
+  "batch_size": 512,
+  "epochs": 5,
+  "learning_rate": 0.001,
+  "num_workers": 12
+}

@@ -8,13 +8,15 @@ class AgentConfig(object):
         # "agent_six"
     ]
     param_files = [
+        "baseline.json",
         "resnet18.json",
         "resnet34.json",
         "resnet50.json",
-        "resnet101.json",
+        # "resnet101.json",
         # "resnet152.json",
         # "wide_resnet101_2.json"
     ]
-    agent_dir = "agents"
-    performance_dir = "agents-performance/run-1"
-    config_dir = "configs"
+    parent_dir = "./results"
+    agent_dir = "./results/agents"
+    predictor_dir = "./results/predictors"
+    config_dir = "./configs"

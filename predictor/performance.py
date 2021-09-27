@@ -7,9 +7,9 @@ from torch.utils.data import DataLoader
 from torchvision import transforms
 from tqdm import tqdm
 
-from recommender.dataset import XrayImageDataset
-from xray.agent import AgentGroup
-from xray.config import AgentConfig
+from predictor.dataset import XrayImageDataset
+from agent import AgentGroup
+from agent import AgentConfig
 
 torch.backends.cudnn.benchmark = True
 torch.backends.cudnn.deterministic = False
@@ -22,8 +22,12 @@ def apply_dropout(m):
     return m
 
 
-def get_preds(agent, transform, device, dataset_type):
-    output_file = os.path.join(agent.params["performance_dir"], f"{agent.name}-performance-{dataset_type}-set.csv")
+def get_preds(agent, device, dataset_type):
+    output_file = os.path.join(AgentConfig.predictor_dir, f"{agent.name}-performance-{dataset_type}-set.csv")
+    dirname = os.path.dirname(output_file)
+    if not os.path.isdir(dirname):
+        os.makedirs(dirname)
+
     if os.path.isfile(output_file):
         print(f"ERROR: {output_file} file exists!")
         return
@@ -34,7 +38,7 @@ def get_preds(agent, transform, device, dataset_type):
         model = agent.model
 
     model.to(device)
-    checkpoint_file = os.path.join(agent.params['agent_dir'], "checkpoint-best.pth.tar")
+    checkpoint_file = os.path.join(agent.model_dir, "checkpoint-best.pth.tar")
     if not os.path.isfile(checkpoint_file):
         print(f"ERROR: {checkpoint_file} not found.")
         return
@@ -52,7 +56,11 @@ def get_preds(agent, transform, device, dataset_type):
     dataset = XrayImageDataset(
         annotations_file=os.path.join(agent.params['dataset_dir'], f"{dataset_type}-labels.csv"),
         img_dir=os.path.join(agent.params['dataset_dir'], f"{dataset_type}-set"),
-        transform=transform
+        transform=transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                 std=[0.229, 0.224, 0.225])
+        ])
     )
     dataloader = DataLoader(
         dataset,
@@ -93,18 +101,10 @@ def get_preds(agent, transform, device, dataset_type):
 
 
 if __name__ == '__main__':
-    # TODO: remove hardcoded normalization data. Read from `normalization-data.json`
-    transform = transforms.Compose([
-        transforms.ToTensor(),
-        transforms.Normalize(
-            [0.7165, 0.7446, 0.7119],
-            [0.3062, 0.2433, 0.2729]
-        )
-    ])
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using {device}")
     agent_group = AgentGroup(AgentConfig.config_dir)
 
     for agent in agent_group.agents:
         for set in ['validation', 'test']:
-            get_preds(agent, transform, device, set)
+            get_preds(agent, device, set)

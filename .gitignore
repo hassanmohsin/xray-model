@@ -3,3 +3,8 @@ __pycache__/
 *.pth.tar
 *.png
 *.csv
+.venv/
+*pth
+events*
+bin/
+*bak

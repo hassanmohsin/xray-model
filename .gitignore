@@ -8,3 +8,4 @@ events*
 bin/
 *bak
 .ipynb_checkpoints/
+results*

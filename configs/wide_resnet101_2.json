@@ -1,7 +1,6 @@
 {
   "model_name": "wide_resnet101_2",
   "dataset_dir": "/data2/mhassan/xray/dataset-6/dataset",
-  "output_dir": "star",
   "pretrained": false,
   "batch_size": 256,
   "epochs": 30,

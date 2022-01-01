@@ -11,7 +11,7 @@ class FocalLoss(nn.Module):
         self.gamma = gamma
 
     def forward(self, inputs, targets):
-        bce_loss = F.binary_cross_entropy_with_logits(inputs, targets, reduction='none')
+        bce_loss = F.binary_cross_entropy_with_logits(inputs, targets, reduction="none")
         pt = torch.exp(-bce_loss)  # prevents nans when probability 0
         focal_loss = self.alpha * (1 - pt) ** self.gamma * bce_loss
         return focal_loss.mean()
@@ -19,7 +19,7 @@ class FocalLoss(nn.Module):
 
 def apply_dropout(m):
     for each_module in m.children():
-        if each_module.__class__.__name__.startswith('Dropout'):
+        if each_module.__class__.__name__.startswith("Dropout"):
             each_module.train()
     return m
 
@@ -39,16 +39,18 @@ def get_mean_std(loader):
 
 
 # TODO: Enable loading epoch, loss and accuracy also
-def load_checkpoint(model, optimizer, filename='checkpoint-best.pth.tar'):
+def load_checkpoint(model, optimizer, filename="checkpoint-best.pth.tar"):
     # Note: Input model & optimizer should be pre-defined.  This routine only updates their states.
     start_epoch = 1
     if os.path.isfile(filename):
         print("=> loading checkpoint '{}'".format(filename))
         checkpoint = torch.load(filename)
-        start_epoch = checkpoint['epoch']
-        model.load_state_dict(checkpoint['state_dict'])
-        optimizer.load_state_dict(checkpoint['optimizer'])
-        print("=> loaded checkpoint '{}' (epoch {})".format(filename, checkpoint['epoch']))
+        start_epoch = checkpoint["epoch"]
+        model.load_state_dict(checkpoint["state_dict"])
+        optimizer.load_state_dict(checkpoint["optimizer"])
+        print(
+            "=> loaded checkpoint '{}' (epoch {})".format(filename, checkpoint["epoch"])
+        )
     else:
         print("=> no checkpoint found at '{}'".format(filename))
 
@@ -60,7 +62,9 @@ def save_checkpoint(state, is_best, filename):
     """Save checkpoint if a new best is achieved"""
     if is_best:
         print("=> Saving a new best")
-        torch.save(state, os.path.join(weight_dir, "checkpoint-best.pth.tar"))  # save checkpoint
+        torch.save(
+            state, os.path.join(weight_dir, "checkpoint-best.pth.tar")
+        )  # save checkpoint
     else:
         print("=> Validation Accuracy did not improve")
     torch.save(state, filename)

@@ -9,7 +9,7 @@ from torchvision import models
 
 def initialize_weights(m):
     if isinstance(m, nn.Conv2d):
-        nn.init.kaiming_uniform_(m.weight.data, nonlinearity='relu')
+        nn.init.kaiming_uniform_(m.weight.data, nonlinearity="relu")
         if m.bias is not None:
             nn.init.constant_(m.bias.data, 0)
     elif isinstance(m, nn.BatchNorm2d):
@@ -29,8 +29,12 @@ takes a tuple of (h,w) and returns a tuple of (h,w)
 def conv_output_shape(h_w, kernel_size=1, stride=1, pad=0, dilation=1):
     if type(kernel_size) is not tuple:
         kernel_size = (kernel_size, kernel_size)
-    h = floor(((h_w[0] + (2 * pad) - (dilation * (kernel_size[0] - 1)) - 1) / stride) + 1)
-    w = floor(((h_w[1] + (2 * pad) - (dilation * (kernel_size[1] - 1)) - 1) / stride) + 1)
+    h = floor(
+        ((h_w[0] + (2 * pad) - (dilation * (kernel_size[0] - 1)) - 1) / stride) + 1
+    )
+    w = floor(
+        ((h_w[1] + (2 * pad) - (dilation * (kernel_size[1] - 1)) - 1) / stride) + 1
+    )
     return h, w
 
 
@@ -38,18 +42,22 @@ def resnet18(pretrained=False):
     model = models.resnet18(pretrained=pretrained)
     if pretrained:
         for name, param in model.named_parameters():
-            if 'bn' not in name:  # DON'T freeze BN layers
+            if "bn" not in name:  # DON'T freeze BN layers
                 param.requires_grad = False
 
-    model.fc = nn.Sequential(OrderedDict([
-        ('dropout1', nn.Dropout(0.5)),
-        ('fc1', nn.Linear(512, 256)),
-        ('activation1', nn.ReLU()),
-        ('dropout2', nn.Dropout(0.3)),
-        ('fc2', nn.Linear(256, 128)),
-        ('activation2', nn.ReLU()),
-        ('fc3', nn.Linear(128, 1))
-    ]))
+    model.fc = nn.Sequential(
+        OrderedDict(
+            [
+                ("dropout1", nn.Dropout(0.5)),
+                ("fc1", nn.Linear(512, 256)),
+                ("activation1", nn.ReLU()),
+                ("dropout2", nn.Dropout(0.3)),
+                ("fc2", nn.Linear(256, 128)),
+                ("activation2", nn.ReLU()),
+                ("fc3", nn.Linear(128, 1)),
+            ]
+        )
+    )
 
     return model
 
@@ -58,17 +66,21 @@ def resnet34(pretrained=False):
     model = models.resnet34(pretrained=pretrained)
     if pretrained:
         for name, param in model.named_parameters():
-            if 'bn' not in name:  # DON'T freeze BN layers
+            if "bn" not in name:  # DON'T freeze BN layers
                 param.requires_grad = False
 
-    model.fc = nn.Sequential(OrderedDict([
-        ('fc1', nn.Linear(512, 256)),
-        ('activation1', nn.ReLU()),
-        ('dropout2', nn.Dropout(0.7)),
-        ('fc2', nn.Linear(256, 128)),
-        ('activation2', nn.ReLU()),
-        ('fc3', nn.Linear(128, 1))
-    ]))
+    model.fc = nn.Sequential(
+        OrderedDict(
+            [
+                ("fc1", nn.Linear(512, 256)),
+                ("activation1", nn.ReLU()),
+                ("dropout2", nn.Dropout(0.7)),
+                ("fc2", nn.Linear(256, 128)),
+                ("activation2", nn.ReLU()),
+                ("fc3", nn.Linear(128, 1)),
+            ]
+        )
+    )
 
     return model
 
@@ -77,22 +89,22 @@ def resnet50(pretrained=False):
     model = models.resnet50(pretrained=pretrained)
     if pretrained:
         for name, param in model.named_parameters():
-            if 'bn' not in name:  # DON'T freeze BN layers
+            if "bn" not in name:  # DON'T freeze BN layers
                 param.requires_grad = False
 
     model.fc = nn.Sequential(
         OrderedDict(
             [
-                ('dropout1', nn.Dropout(0.5)),
-                ('fc1', nn.Linear(2048, 1024)),
-                ('activation1', nn.ReLU()),
-                ('dropout2', nn.Dropout(0.3)),
-                ('fc2', nn.Linear(1024, 256)),
-                ('activation2', nn.ReLU()),
-                ('dropout3', nn.Dropout(0.3)),
-                ('fc3', nn.Linear(256, 128)),
-                ('activation3', nn.ReLU()),
-                ('fc4', nn.Linear(128, 1))
+                ("dropout1", nn.Dropout(0.5)),
+                ("fc1", nn.Linear(2048, 1024)),
+                ("activation1", nn.ReLU()),
+                ("dropout2", nn.Dropout(0.3)),
+                ("fc2", nn.Linear(1024, 256)),
+                ("activation2", nn.ReLU()),
+                ("dropout3", nn.Dropout(0.3)),
+                ("fc3", nn.Linear(256, 128)),
+                ("activation3", nn.ReLU()),
+                ("fc4", nn.Linear(128, 1)),
             ]
         )
     )
@@ -104,22 +116,22 @@ def resnet101(pretrained):
     model = models.resnet101(pretrained=pretrained)
     if pretrained:
         for name, param in model.named_parameters():
-            if 'bn' not in name:  # DON'T freeze BN layers
+            if "bn" not in name:  # DON'T freeze BN layers
                 param.requires_grad = False
 
     model.fc = nn.Sequential(
         OrderedDict(
             [
-                ('dropout1', nn.Dropout(0.5)),
-                ('fc1', nn.Linear(2048, 1024)),
-                ('activation1', nn.ReLU()),
-                ('dropout2', nn.Dropout(0.3)),
-                ('fc2', nn.Linear(1024, 256)),
-                ('activation2', nn.ReLU()),
-                ('dropout3', nn.Dropout(0.3)),
-                ('fc3', nn.Linear(256, 128)),
-                ('activation3', nn.ReLU()),
-                ('fc4', nn.Linear(128, 1))
+                ("dropout1", nn.Dropout(0.5)),
+                ("fc1", nn.Linear(2048, 1024)),
+                ("activation1", nn.ReLU()),
+                ("dropout2", nn.Dropout(0.3)),
+                ("fc2", nn.Linear(1024, 256)),
+                ("activation2", nn.ReLU()),
+                ("dropout3", nn.Dropout(0.3)),
+                ("fc3", nn.Linear(256, 128)),
+                ("activation3", nn.ReLU()),
+                ("fc4", nn.Linear(128, 1)),
             ]
         )
     )
@@ -131,22 +143,22 @@ def resnet152(pretrained=False):
     model = models.resnet152(pretrained=pretrained)
     if pretrained:
         for name, param in model.named_parameters():
-            if 'bn' not in name:  # DON'T freeze BN layers
+            if "bn" not in name:  # DON'T freeze BN layers
                 param.requires_grad = False
 
     model.fc = nn.Sequential(
         OrderedDict(
             [
-                ('dropout1', nn.Dropout(0.5)),
-                ('fc1', nn.Linear(2048, 1024)),
-                ('activation1', nn.ReLU()),
-                ('dropout2', nn.Dropout(0.3)),
-                ('fc2', nn.Linear(1024, 256)),
-                ('activation2', nn.ReLU()),
-                ('dropout3', nn.Dropout(0.3)),
-                ('fc3', nn.Linear(256, 128)),
-                ('activation3', nn.ReLU()),
-                ('fc4', nn.Linear(128, 1))
+                ("dropout1", nn.Dropout(0.5)),
+                ("fc1", nn.Linear(2048, 1024)),
+                ("activation1", nn.ReLU()),
+                ("dropout2", nn.Dropout(0.3)),
+                ("fc2", nn.Linear(1024, 256)),
+                ("activation2", nn.ReLU()),
+                ("dropout3", nn.Dropout(0.3)),
+                ("fc3", nn.Linear(256, 128)),
+                ("activation3", nn.ReLU()),
+                ("fc4", nn.Linear(128, 1)),
             ]
         )
     )
@@ -158,22 +170,22 @@ def wide_resnet101_2(pretrained=False):
     model = models.wide_resnet101_2(pretrained=pretrained)
     if pretrained:
         for name, param in model.named_parameters():
-            if 'bn' not in name:  # DON'T freeze BN layers
+            if "bn" not in name:  # DON'T freeze BN layers
                 param.requires_grad = False
 
     model.fc = nn.Sequential(
         OrderedDict(
             [
-                ('dropout1', nn.Dropout(0.5)),
-                ('fc1', nn.Linear(2048, 1024)),
-                ('activation1', nn.ReLU()),
-                ('dropout2', nn.Dropout(0.3)),
-                ('fc2', nn.Linear(1024, 256)),
-                ('activation2', nn.ReLU()),
-                ('dropout3', nn.Dropout(0.3)),
-                ('fc3', nn.Linear(256, 128)),
-                ('activation3', nn.ReLU()),
-                ('fc4', nn.Linear(128, 1))
+                ("dropout1", nn.Dropout(0.5)),
+                ("fc1", nn.Linear(2048, 1024)),
+                ("activation1", nn.ReLU()),
+                ("dropout2", nn.Dropout(0.3)),
+                ("fc2", nn.Linear(1024, 256)),
+                ("activation2", nn.ReLU()),
+                ("dropout3", nn.Dropout(0.3)),
+                ("fc3", nn.Linear(256, 128)),
+                ("activation3", nn.ReLU()),
+                ("fc4", nn.Linear(128, 1)),
             ]
         )
     )
@@ -255,7 +267,7 @@ class ModelTwo(nn.Module):
         return x
 
 
-def get_model(model_name='', pretrained=False):
+def get_model(model_name="", pretrained=False):
     if model_name == "baseline":
         model = BaselineModel()
         model.apply(initialize_weights)

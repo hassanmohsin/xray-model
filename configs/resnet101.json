@@ -1,1 +1,9 @@
-{  "model_name": "resnet101",  "dataset_dir": "/data/mhassan/xray/dataset-5/dataset",  "pretrained": false,  "batch_size": 64,  "epochs": 10,  "learning_rate": 0.0001,  "num_worker": 40}
+{
+  "model_name": "resnet101",
+  "dataset_dir": "/data/mhassan/xray/dataset-5/dataset",
+  "pretrained": false,
+  "batch_size": 64,
+  "epochs": 10,
+  "learning_rate": 0.0001,
+  "num_worker": 40
+}

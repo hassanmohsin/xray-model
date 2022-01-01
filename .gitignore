@@ -9,3 +9,4 @@ bin/
 *bak
 .ipynb_checkpoints/
 results*
+.vscode/

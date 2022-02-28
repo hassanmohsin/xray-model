@@ -1,9 +1,0 @@
-{
-  "model_name": "ModelOne",
-  "dataset_dir": "/data2/mhassan/xray/dataset",
-  "model_dir": "./ModelOne",
-  "batch_size": 64,
-  "epochs": 50,
-  "learning_rate": 0.001,
-  "num_worker": 8
-}

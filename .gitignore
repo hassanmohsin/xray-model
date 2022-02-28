@@ -3,3 +3,10 @@ __pycache__/
 *.pth.tar
 *.png
 *.csv
+.venv/
+events*
+bin/
+*bak
+.ipynb_checkpoints/
+results*
+.vscode/

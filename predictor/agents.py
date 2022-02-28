@@ -17,27 +17,23 @@ class Agent:
         self.model_dir = model_dir
 
     # TODO: specify dataset type e.g., 'validation' or 'test'
-    def get_preds(  model, checkpoint, transform, device):
+    def get_preds(model, checkpoint, transform, device):
         # TODO: get predictions from all models concurrently
         if torch.cuda.device_count() > 1:
             model = nn.DataParallel(model)
 
         model.to(device)
         checkpoint = torch.load(checkpoint)
-        model.load_state_dict(checkpoint['state_dict'])
+        model.load_state_dict(checkpoint["state_dict"])
         model.eval()
 
         dataset = XrayImageDataset(
             annotations_file=f"{self.dataset_dir}/validation-labels.csv",
             img_dir=f"{self.dataset_dir}/validation-set",
-            transform=transform
+            transform=transform,
         )
         dataloader = DataLoader(
-            dataset,
-            batch_size=64,
-            shuffle=False,
-            num_workers=8,
-            pin_memory=True
+            dataset, batch_size=64, shuffle=False, num_workers=8, pin_memory=True
         )
 
         pred_labels = []
@@ -51,48 +47,52 @@ class Agent:
 
         return image_ids, pred_labels
 
-
     def agent_one(device, transform):
         checkpoint = os.path.join(model_dir, "ModelTwo/checkpoint-best.pth.tar")
         model = ModelTwo()
         return get_preds(model, checkpoint, transform, device)
 
-
     def agent_two(device, transform):
         checkpoint = os.path.join(model_dir, "resnet18/checkpoint-best.pth.tar")
         model = models.resnet18(pretrained=False)
-        layers_resnet = nn.Sequential(OrderedDict([
-            ('dropout1', nn.Dropout(0.5)),
-            ('fc1', nn.Linear(512, 256)),
-            ('activation1', nn.ReLU()),
-            ('dropout2', nn.Dropout(0.3)),
-            ('fc2', nn.Linear(256, 128)),
-            ('activation2', nn.ReLU()),
-            ('fc3', nn.Linear(128, 1))
-            # ('out', nn.Sigmoid())
-        ]))
+        layers_resnet = nn.Sequential(
+            OrderedDict(
+                [
+                    ("dropout1", nn.Dropout(0.5)),
+                    ("fc1", nn.Linear(512, 256)),
+                    ("activation1", nn.ReLU()),
+                    ("dropout2", nn.Dropout(0.3)),
+                    ("fc2", nn.Linear(256, 128)),
+                    ("activation2", nn.ReLU()),
+                    ("fc3", nn.Linear(128, 1))
+                    # ('out', nn.Sigmoid())
+                ]
+            )
+        )
 
         model.fc = layers_resnet
         return get_preds(model, checkpoint, transform, device)
-
 
     def agent_three(device, transform):
         checkpoint = os.path.join(model_dir, "resnet34/checkpoint-best.pth.tar")
         model = models.resnet34(pretrained=False)
-        layers_resnet = nn.Sequential(OrderedDict([
-            ('dropout1', nn.Dropout(0.5)),
-            ('fc1', nn.Linear(512, 256)),
-            ('activation1', nn.ReLU()),
-            ('dropout2', nn.Dropout(0.3)),
-            ('fc2', nn.Linear(256, 128)),
-            ('activation2', nn.ReLU()),
-            ('fc3', nn.Linear(128, 1))
-            # ('out', nn.Sigmoid())
-        ]))
+        layers_resnet = nn.Sequential(
+            OrderedDict(
+                [
+                    ("dropout1", nn.Dropout(0.5)),
+                    ("fc1", nn.Linear(512, 256)),
+                    ("activation1", nn.ReLU()),
+                    ("dropout2", nn.Dropout(0.3)),
+                    ("fc2", nn.Linear(256, 128)),
+                    ("activation2", nn.ReLU()),
+                    ("fc3", nn.Linear(128, 1))
+                    # ('out', nn.Sigmoid())
+                ]
+            )
+        )
 
         model.fc = layers_resnet
         return get_preds(model, checkpoint, transform, device)
-
 
     def agent_four(device, transform):
         checkpoint = os.path.join(model_dir, "resnet50/checkpoint-best.pth.tar")
@@ -101,23 +101,22 @@ class Agent:
         layers_resnet = nn.Sequential(
             OrderedDict(
                 [
-                    ('dropout1', nn.Dropout(0.5)),
-                    ('fc1', nn.Linear(2048, 1024)),
-                    ('activation1', nn.ReLU()),
-                    ('dropout2', nn.Dropout(0.3)),
-                    ('fc2', nn.Linear(1024, 256)),
-                    ('activation2', nn.ReLU()),
-                    ('dropout3', nn.Dropout(0.3)),
-                    ('fc3', nn.Linear(256, 128)),
-                    ('activation3', nn.ReLU()),
-                    ('fc4', nn.Linear(128, 1))
+                    ("dropout1", nn.Dropout(0.5)),
+                    ("fc1", nn.Linear(2048, 1024)),
+                    ("activation1", nn.ReLU()),
+                    ("dropout2", nn.Dropout(0.3)),
+                    ("fc2", nn.Linear(1024, 256)),
+                    ("activation2", nn.ReLU()),
+                    ("dropout3", nn.Dropout(0.3)),
+                    ("fc3", nn.Linear(256, 128)),
+                    ("activation3", nn.ReLU()),
+                    ("fc4", nn.Linear(128, 1)),
                 ]
             )
         )
 
         model.fc = layers_resnet
         return get_preds(model, checkpoint, transform, device)
-
 
     def agent_five(device, transform):
         checkpoint = os.path.join(model_dir, "resnet101/checkpoint-best.pth.tar")
@@ -126,23 +125,22 @@ class Agent:
         layers_resnet = nn.Sequential(
             OrderedDict(
                 [
-                    ('dropout1', nn.Dropout(0.5)),
-                    ('fc1', nn.Linear(2048, 1024)),
-                    ('activation1', nn.ReLU()),
-                    ('dropout2', nn.Dropout(0.3)),
-                    ('fc2', nn.Linear(1024, 256)),
-                    ('activation2', nn.ReLU()),
-                    ('dropout3', nn.Dropout(0.3)),
-                    ('fc3', nn.Linear(256, 128)),
-                    ('activation3', nn.ReLU()),
-                    ('fc4', nn.Linear(128, 1))
+                    ("dropout1", nn.Dropout(0.5)),
+                    ("fc1", nn.Linear(2048, 1024)),
+                    ("activation1", nn.ReLU()),
+                    ("dropout2", nn.Dropout(0.3)),
+                    ("fc2", nn.Linear(1024, 256)),
+                    ("activation2", nn.ReLU()),
+                    ("dropout3", nn.Dropout(0.3)),
+                    ("fc3", nn.Linear(256, 128)),
+                    ("activation3", nn.ReLU()),
+                    ("fc4", nn.Linear(128, 1)),
                 ]
             )
         )
 
         model.fc = layers_resnet
         return get_preds(model, checkpoint, transform, device)
-
 
     def agent_six(device, transform):
         checkpoint = os.path.join(model_dir, "wide_resnet101_2/checkpoint-best.pth.tar")
@@ -151,23 +149,22 @@ class Agent:
         layers_resnet = nn.Sequential(
             OrderedDict(
                 [
-                    ('dropout1', nn.Dropout(0.5)),
-                    ('fc1', nn.Linear(2048, 1024)),
-                    ('activation1', nn.ReLU()),
-                    ('dropout2', nn.Dropout(0.3)),
-                    ('fc2', nn.Linear(1024, 256)),
-                    ('activation2', nn.ReLU()),
-                    ('dropout3', nn.Dropout(0.3)),
-                    ('fc3', nn.Linear(256, 128)),
-                    ('activation3', nn.ReLU()),
-                    ('fc4', nn.Linear(128, 1))
+                    ("dropout1", nn.Dropout(0.5)),
+                    ("fc1", nn.Linear(2048, 1024)),
+                    ("activation1", nn.ReLU()),
+                    ("dropout2", nn.Dropout(0.3)),
+                    ("fc2", nn.Linear(1024, 256)),
+                    ("activation2", nn.ReLU()),
+                    ("dropout3", nn.Dropout(0.3)),
+                    ("fc3", nn.Linear(256, 128)),
+                    ("activation3", nn.ReLU()),
+                    ("fc4", nn.Linear(128, 1)),
                 ]
             )
         )
 
         model.fc = layers_resnet
         return get_preds(model, checkpoint, transform, device)
-
 
     def agent_seven(device, transform):
         checkpoint = os.path.join(model_dir, "resnet152/checkpoint-best.pth.tar")
@@ -176,16 +173,16 @@ class Agent:
         layers_resnet = nn.Sequential(
             OrderedDict(
                 [
-                    ('dropout1', nn.Dropout(0.5)),
-                    ('fc1', nn.Linear(2048, 1024)),
-                    ('activation1', nn.ReLU()),
-                    ('dropout2', nn.Dropout(0.3)),
-                    ('fc2', nn.Linear(1024, 256)),
-                    ('activation2', nn.ReLU()),
-                    ('dropout3', nn.Dropout(0.3)),
-                    ('fc3', nn.Linear(256, 128)),
-                    ('activation3', nn.ReLU()),
-                    ('fc4', nn.Linear(128, 1))
+                    ("dropout1", nn.Dropout(0.5)),
+                    ("fc1", nn.Linear(2048, 1024)),
+                    ("activation1", nn.ReLU()),
+                    ("dropout2", nn.Dropout(0.3)),
+                    ("fc2", nn.Linear(1024, 256)),
+                    ("activation2", nn.ReLU()),
+                    ("dropout3", nn.Dropout(0.3)),
+                    ("fc3", nn.Linear(256, 128)),
+                    ("activation3", nn.ReLU()),
+                    ("fc4", nn.Linear(128, 1)),
                 ]
             )
         )
@@ -193,19 +190,22 @@ class Agent:
         model.fc = layers_resnet
         return get_preds(model, checkpoint, transform, device)
 
-
     def agent_eight(device, transform):
         checkpoint = os.path.join(model_dir, "vgg19_bn/checkpoint-best.pth.tar")
         model = models.vgg19_bn(pretrained=False)
-        layers = nn.Sequential(OrderedDict([
-            ('fc1', nn.Linear(25088, 4096)),
-            ('activation1', nn.ReLU()),
-            ('dropout1', nn.Dropout(0.5)),
-            ('fc2', nn.Linear(4096, 128)),
-            ('activation2', nn.ReLU()),
-            ('dropout2', nn.Dropout(0.3)),
-            ('fc3', nn.Linear(128, 1))
-        ]))
+        layers = nn.Sequential(
+            OrderedDict(
+                [
+                    ("fc1", nn.Linear(25088, 4096)),
+                    ("activation1", nn.ReLU()),
+                    ("dropout1", nn.Dropout(0.5)),
+                    ("fc2", nn.Linear(4096, 128)),
+                    ("activation2", nn.ReLU()),
+                    ("dropout2", nn.Dropout(0.3)),
+                    ("fc3", nn.Linear(128, 1)),
+                ]
+            )
+        )
 
         model.classifier = layers
         return get_preds(model, checkpoint, transform, device)

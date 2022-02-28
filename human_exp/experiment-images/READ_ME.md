@@ -1,0 +1,4 @@
+- `5_1_1-Images` - Images used for experiment 1
+- `5_1_2-Images` - Images used for experiment 2
+- `5_1_3-Images` - Images used for experiment 3
+- `images` - All the images used in experiement 1, 2 and 3, in order. First 30 images are for experiment 1, next 30 is for experiment 2 and so on.

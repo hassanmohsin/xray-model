@@ -9,6 +9,10 @@
 
 ## Predictor training
 
-- Run `python -m recommender.performance` on validation and test set to get the performance evaluation of all the models. `agent-performance-<set>.csv` will be created
-- Run `python -m recommender.train` to train the recommender model on the performance results
-  
+- Run `python -m predictor.performance` on validation and test set to get the performance evaluation of all the models. `agent-performance-<set>.csv` will be created
+- Run `python -m predictor.train` to train the recommender model on the performance results
+- Run `python -m predictor.train --input configs/baseline.json` to evaluate only
+
+## Human Experiment
+
+- Run `python -m human_exp.train --input configs/baseline.json` to retrain the predictor models on the human experiment data and get the comparative results for optimized and random assignment.
